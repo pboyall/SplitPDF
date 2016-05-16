@@ -32,18 +32,27 @@ namespace SplitPDF
             splitPDF splitter = new splitPDF();
             //Path.GetTempPath()
             string mydirectory = System.IO.Path.GetDirectoryName(Environment.GetCommandLineArgs()[0]).ToString();
-            splitter.inputfile = mydirectory + "\\Users.pdf";
+            splitter.inputfile = mydirectory + "\\This is page 1.pdf";
             splitter.outputfile = mydirectory + "\\Output";     //Just testing
-/*
+
+            splitter.BookMarkList(splitter.inputfile);
+
+            //Do Stuff with BookmarksDict
+            foreach (var jd in splitter.bookmarksDict)
+            {
+                Console.WriteLine(jd.ToString());
+            }
+
             //Save each PDF as a separate PDF page
             int returned = splitter.Split();
-            //Save each PDF page as a JPG
-            splitter.PDFToImage(300);
             //Create a row in a spreadsheet for each PDF
             splitter.ExportToExcel("");     //No tabname for now - that would be if updating.  Later
-*/
-            splitter.readSiteMap();
 
+            /*
+            //Save each PDF page as a JPG
+            splitter.PDFToImage(300);
+            splitter.readSiteMap();
+            */
         }
 
 
@@ -62,6 +71,123 @@ namespace SplitPDF
             float distanceInPixelsFromBottom = 1950;
             float width = 1000;
             float height = 200;
+            //This perhaps isn't ideal, as in a perfect world we'd have a multi dimensional dictionary of dictionaries that could expand indefinitely.  
+            //However, it's easier to understand this way
+            public Dictionary<string, object> bookmarksDict;           //i.e. Chapters
+/*
+ *            public iterateChildren(masterstring, child)
+            {
+
+                for each child.child{
+                    iterateChildren(masterstring, child)
+                }
+                masterstring = Child.name
+
+            }
+*/
+
+
+/*
+            private int BookMarkListX(string filename)
+            {
+                int numberofbookmarks= 0;
+                PdfReader pdfReader = new PdfReader(filename);
+                IList<Dictionary<string, object>> bookmarks = SimpleBookmark.GetBookmark(pdfReader);
+                //bookmarks will be null if no bookmarks found
+                foreach (var bd in bookmarks)
+                {
+//                    bookmarkdetails = getBookmarks(Dictionary<string, object>) bd["Kids"];
+
+                    string bookmarkname, bookmarkpage, bookmarkpagenumber;
+                    Dictionary<string, object> kidbookmarks;
+                    Dictionary<string, object> bookmarkdetails = new Dictionary<string, object>();
+                    
+                    bookmarkname = bd.Values.ToArray().GetValue(0).ToString();
+                    bookmarkpage = bd["Page"].ToString();
+                    bookmarkpagenumber = bookmarkpage.Substring(0, bookmarkpage.IndexOf(" "));
+                    Console.WriteLine(bookmarkname + " page " + bookmarkpagenumber);
+                    if (bd.ContainsKey("Kids"))
+                    {
+                        //Deal with children
+                        Dictionary<string, object> bdkids = (Dictionary <string, object>) bd["Kids"];
+                        kidbookmarks = getBookmarks(bdkids);
+                        bookmarkdetails.Add("kids", kidbookmarks);
+                    }
+                    bookmarkdetails.Add("Name", bookmarkname);
+                    bookmarksDict.Add(bookmarkpagenumber, bookmarkdetails);
+
+                }
+                numberofbookmarks = bookmarks.Count;
+                return numberofbookmarks;
+            }
+
+            private Dictionary<string, object> getBookmarks(Dictionary<string, object> bookmark)
+            {
+                string bookmarkname, bookmarkpage, bookmarkpagenumber;
+                Dictionary<string, object> kidbookmarks;
+                Dictionary<string, object> bookmarkdetails = new Dictionary<string, object>();
+                bookmarkname = bookmark.Values.ToArray().GetValue(0).ToString();
+                bookmarkpage = bookmark["Page"].ToString();
+                bookmarkpagenumber = bookmarkpage.Substring(0, bookmarkpage.IndexOf(" "));
+                Console.WriteLine(bookmarkname + " page " + bookmarkpagenumber);
+                bookmarkdetails.Add("Name", bookmarkname);
+                if (bookmark.ContainsKey("Kids"))
+                {
+                    //Deal with children
+                    Console.WriteLine("Iterate Children of " + bookmarkname);
+                    Dictionary<string, object> bdkids = (Dictionary<string, object>)bookmark["Kids"];
+                    foreach (var bdd in bdkids) { 
+                        kidbookmarks = getBookmarks(bdkids);
+                    }
+                }
+                
+                bookmarksDict.Add(bookmarkpagenumber, bookmarkdetails);
+                return bookmarksDict;
+            }
+            */
+
+            public int BookMarkList(string filename)
+            {
+                int numberofbookmarks = 0;
+                string bookmarklist = "";
+                PdfReader pdfReader = new PdfReader(filename);
+                IList<Dictionary<string, object>> bookmarks = SimpleBookmark.GetBookmark(pdfReader);
+                bookmarksDict = new Dictionary<string, object>();
+
+                //bookmarks will be null if no bookmarks found
+
+                iterateBookmarks(ref bookmarklist, bookmarks, 1);
+                Console.WriteLine(bookmarklist);
+                numberofbookmarks = bookmarks.Count;
+                return numberofbookmarks;
+            }
+
+            public void iterateBookmarks(ref string bookmarklist, IList<Dictionary<string, object>> bookmarks, int level)
+            {
+                Console.WriteLine("Iterating Level " + level);
+                foreach (var bd in bookmarks)
+                {
+                    string bookmarkname, bookmarkpage, bookmarkpagenumber;
+                    bookmarkname = "";bookmarkpage = "";bookmarkpagenumber="";
+                    Dictionary<string, object> bookmarkdetails = new Dictionary<string, object>();
+                    if (bd.ContainsKey("Kids"))
+                    {
+                        //Deal with children
+                        IList<Dictionary<string, object>> bdkids = (IList < Dictionary < string, object>>) bd["Kids"];
+                        iterateBookmarks(ref bookmarklist, bdkids, level+1);
+                    }
+                    bookmarkname = bd.Values.ToArray().GetValue(0).ToString();
+                    bookmarkpage = bd["Page"].ToString();
+                    bookmarkpagenumber = bookmarkpage.Substring(0, bookmarkpage.IndexOf(" "));
+                    bookmarkdetails.Add("Name", bookmarkname);
+                    bookmarkdetails.Add("Level", level);
+                    bookmarkdetails.Add("PDFPage", bookmarkpagenumber);
+                    bookmarksDict.Add(bookmarkpagenumber, bookmarkdetails);
+                    bookmarklist = bookmarklist + " - " + bookmarkname;
+                }
+            }
+
+
 
             public int Split()
             {
@@ -70,8 +196,13 @@ namespace SplitPDF
                 //Hard coded column list for now just to test
                 table.Columns.Add("PageReference", typeof(int));
                 table.Columns.Add("PageOrder", typeof(int));
-                table.Columns.Add("Description", typeof(string));
-                table.Columns.Add("Label", typeof(string));
+                table.Columns.Add("Title", typeof(string));
+                table.Columns.Add("Text", typeof(string));
+                table.Columns.Add("Chapter", typeof(string));
+                table.Columns.Add("Section", typeof(string));
+                table.Columns.Add("Subsection", typeof(string));
+                table.Columns.Add("Sub-Subsection", typeof(string));
+                table.Columns.Add("Comments", typeof(string));
                 //Not sure how to add a thumbnail column - another job for later
 
                 FileInfo file = new FileInfo(inputfile);
@@ -81,39 +212,73 @@ namespace SplitPDF
                 using (PdfReader reader = new PdfReader(inputfile))
                 {
                     pageCount = reader.NumberOfPages;
-                    //Iterate around the PDF
-
+                    //Iterate around the PDF, keep these so they propogate downwards
+                    string Chapter, Section, Subsection, SubSubsection;
+                    Chapter = ""; Section = ""; Subsection = ""; SubSubsection = "";
                     for (int pagenumber = 1; pagenumber <= reader.NumberOfPages; pagenumber++)
                     {
                         string filename = pagenumber.ToString() + ".pdf";
-                        
                         Document document = new Document();
                         PdfCopy copy = new PdfCopy(document, new FileStream(outputfile + "\\" + filename, FileMode.Create));
-
                         document.Open();
-
                         copy.AddPage(copy.GetImportedPage(reader, pagenumber));
-
                         document.Close();
+
 //Extract Text from the page
                         ITextExtractionStrategy strategy = new SimpleTextExtractionStrategy();
                         var currentText = PdfTextExtractor.GetTextFromPage(reader, pagenumber, strategy);
                         string pageText =Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default,Encoding.UTF8,Encoding.Default.GetBytes(currentText)));
+                        string pageComments = "";
                         //Extract title text from page (some duplicated code here, leave it for now)
                         //Move outside loop when finished testing - handy for iterating sizes at the moment
                         Rectangle mediabox = reader.GetPageSize(pagenumber);
-
                         var rect = new System.util.RectangleJ(distanceInPixelsFromLeft,distanceInPixelsFromBottom,width,height);
                         var filters = new RenderFilter[1];
                         filters[0] = new RegionTextRenderFilter(rect);
                         strategy = new FilteredTextRenderListener(new LocationTextExtractionStrategy(),filters);
                         currentText = PdfTextExtractor.GetTextFromPage(reader, pagenumber, strategy);
                         string titleText = Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes(currentText)));
+                        iTextSharp.text.pdf.PdfDictionary page = reader.GetPageN(pagenumber);
+                        iTextSharp.text.pdf.PdfArray annots = page.GetAsArray(iTextSharp.text.pdf.PdfName.ANNOTS);
+                        if (annots != null) { 
+                            foreach (iTextSharp.text.pdf.PdfObject annot in annots.ArrayList)
+                            {
+                                iTextSharp.text.pdf.PdfDictionary annotation = (iTextSharp.text.pdf.PdfDictionary)PdfReader.GetPdfObject(annot);
+                                iTextSharp.text.pdf.PdfString contents = annotation.GetAsString(iTextSharp.text.pdf.PdfName.CONTENTS);
+                                pageComments = contents.ToString();
+                            }
+                        }
                         try { TabName = reader.Info["Title"]; } catch (Exception e) { }//Just consume an error
-                        //Add to Excel Spreadsheet
-                        //Hard coded test - next step to build the description using text from the page
-                        table.Rows.Add(pagenumber, pagenumber, titleText, pageText);
+                                                                                       //Add to Excel Spreadsheet
+                                                                                       //This is probably where to also add the screenshot of the PDF to the Excel page
+                                                                                       //Check to see Bookmark for this page
 
+
+                        if (bookmarksDict.ContainsKey(pagenumber.ToString()))
+                        {
+                            string BookmarkTitle;
+                            string BookmarkLevel;
+                            string PDFPage;
+                            object wibble;
+                            if (bookmarksDict.TryGetValue(pagenumber.ToString(), out wibble)) {
+                                Dictionary<string, object> wibble1 = (Dictionary<string, object>)wibble;
+                                BookmarkTitle = wibble1["Name"].ToString();
+                                BookmarkLevel = wibble1["Level"].ToString();
+                                PDFPage = wibble1["PDFPage"].ToString();
+                                //Clear out Children at each level, so children retain the parent that would have been set earlier but parents get cleaned
+                                switch (BookmarkLevel)
+                                {
+                                    case "1": Chapter = BookmarkTitle;Section = ""; Subsection = ""; SubSubsection = "";break;
+                                    case "2": Section = BookmarkTitle; Subsection = ""; SubSubsection = "";break;
+                                    case "3": Subsection = BookmarkTitle; SubSubsection = "";break;
+                                    case "4": SubSubsection = BookmarkTitle; break;
+                                }
+                            }
+                        }                        
+                        table.Rows.Add(pagenumber, pagenumber, titleText, pageText, Chapter, Section, Subsection, SubSubsection, pageComments);
+                            
+
+                        
                     }
                     return pageCount;
                 }
@@ -238,9 +403,20 @@ namespace SplitPDF
 
                 return "0";
             }
-  
-        }
 
+
+            public Boolean compareImages(string PathToImage1, string PathToImage2)
+            {
+                Boolean retval = false;
+
+
+
+
+                return retval;
+            }
+
+
+        }
 
 
 
