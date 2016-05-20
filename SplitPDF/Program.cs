@@ -28,36 +28,39 @@ namespace SplitPDF
             splitter.exportDPI = 300;
             splitter.thumbnailheight = 150;
             splitter.thumbnailwidth = 200;
-            string excelfile = splitter.outputfile + "\\TestImage1.xlsx";
-            string imagefile = splitter.outputfile + "\\PSA-p135.jpg";
-
-            ExcelExport ee = new ExcelExport();
-
-            //This works, but the rows aren't high enough so would also have to resize the row height.
-            //            string duh = new ExcelHelper().addThumbNail(rowNumber, colNumber, Tabname, excelfile, imagefile);
-
-
-            splitter.createPDFs = false;
-            splitter.BookMarkList(splitter.inputfile);
+            splitter.createPDFs = true;
+            //splitter.BookMarkList(splitter.inputfile);
             //Save each PDF as a separate PDF page
             int returned = splitter.Split();
-            ee.ExportToExcel(excelfile, "myTab", splitter.metatable);
-
             //Create a row in a spreadsheet for each PDF
-            //            splitter.ExportToExcel("", splitter.metatable);     //No tabname for now - that would be if updating.  Later
-            //            splitter.ExportToExcel("", splitter.navtable);     //No tabname for now - that would be if updating.  Later
-            //ExcelBuilder builder = new ExcelBuilder();
-            //builder.SetDataSource(splitter.metatable);
-            //builder.CreatePackage(@"output.xlsx");
-
+            string excelfile = splitter.outputfile + "\\" + Guid.NewGuid().ToString() + ".xlsx";
+            splitter.ExportToExcel(excelfile, "Meta", splitter.metatable);     //No tabname for now - that would be if updating.  Later
+            splitter.ExportToExcel(excelfile, "Nav", splitter.navtable);     //No tabname for now - that would be if updating.  Later
 
             /*
-            //Save each PDF page as a JPG
-            splitter.PDFToImage(300);
             splitter.readSiteMap();
             */
         }
 
+
+        //Separate Class as Originally I hoped to only have to initialise all the expensive strategies and filters once - turns out you can't do that
+        private class PDFExtractor{
+            //Dimensions for the box on the page where the Title Text is stored  (change to struct later) Not sure how to work out what these dimensions should be, don't like the idea of trial and error!
+            public float distanceInPixelsFromLeft = 174;
+            public float distanceInPixelsFromBottom = 1950;
+            public float width = 1000;
+            public float height = 200 ;
+            public ITextExtractionStrategy bodystrategy { get; set; }
+            public ITextExtractionStrategy titlestrategy { get; set; }
+
+            public PDFExtractor() {
+                bodystrategy = new SimpleTextExtractionStrategy();
+                var filters = new RenderFilter[1];
+                var titlerect = new System.util.RectangleJ(distanceInPixelsFromLeft, distanceInPixelsFromBottom, width, height);
+                filters[0] = new RegionTextRenderFilter(titlerect);
+                titlestrategy = new FilteredTextRenderListener(new LocationTextExtractionStrategy(), filters);
+            }
+        }
 
 
         public class splitPDF
@@ -73,11 +76,6 @@ namespace SplitPDF
             public int thumbnailwidth { get; set; }
             public Boolean createPDFs { get; set; }         //set to true to create individual PDFs
 
-            //Dimensions for the box on the page where the Title Text is stored  (change to struct later) Not sure how to work out what these dimensions should be, don't like the idea of trial and error!
-            float distanceInPixelsFromLeft = 174;
-            float distanceInPixelsFromBottom = 1950;
-            float width = 1000;
-            float height = 200;
             //This perhaps isn't ideal, as in a perfect world we'd have a multi dimensional dictionary of dictionaries that could expand indefinitely.  
             //However, it's easier to understand this way
             public Dictionary<string, object> bookmarksDict;           //i.e. Chapters
@@ -125,50 +123,109 @@ namespace SplitPDF
             }
 
             //TODO sort out a hashmap for field names
-            
+//Just hard coded column listing, not going as far as building a full field/object mapping type system!
             private DataTable createDataTable(string tablename, Dictionary<string, string> fields)
             {
                 DataTable table = new DataTable(tablename);
                 if (tablename == "DSA") { 
                 //Hard coded column list for now just to test
-                table.Columns.Add("PageReference", typeof(int));
-                table.Columns.Add("PageOrder", typeof(int));
-                table.Columns.Add("Title", typeof(string));
-                table.Columns.Add("Text", typeof(string));
-                table.Columns.Add("PageType", typeof(string));
-                table.Columns.Add("Chapter", typeof(string));
-                table.Columns.Add("Section", typeof(string));
-                table.Columns.Add("Subsection", typeof(string));
-                table.Columns.Add("Sub-Subsection", typeof(string));
-                table.Columns.Add("Sub3section", typeof(string));
-                table.Columns.Add("Sub4section", typeof(string));
-                table.Columns.Add("Comments", typeof(string));
-                table.Columns.Add("Owner", typeof(string));
+                    table.Columns.Add("PageReference", typeof(int));
+                    table.Columns.Add("PageOrder", typeof(int));
+                    table.Columns.Add("Title", typeof(string));
+                    table.Columns.Add("Text", typeof(string));
+                    table.Columns.Add("PageType", typeof(string));
+                    table.Columns.Add("Chapter", typeof(string));
+                    table.Columns.Add("Section", typeof(string));
+                    table.Columns.Add("Subsection", typeof(string));
+                    table.Columns.Add("Sub-Subsection", typeof(string));
+                    table.Columns.Add("Sub3section", typeof(string));
+                    table.Columns.Add("Sub4section", typeof(string));
+                    table.Columns.Add("Comments", typeof(string));
+                    table.Columns.Add("Owner", typeof(string));
                     table.Columns.Add("Thumbnail", typeof(string));
                     //table.Columns.Add("Thumbnail", typeof(System.Drawing.Image));
 
                 }
                 //These ones for building sitemaps - adding to main Spreadsheet but might be better to have separately
                 if (tablename == "DSANav") { 
-                table.Columns.Add("Source", typeof(string));
-                table.Columns.Add("Target", typeof(string));
-                table.Columns.Add("Weight", typeof(string));
-                table.Columns.Add("NavType", typeof(string));
-                table.Columns.Add("Thumbnail", typeof(string));
-                table.Columns.Add("URL", typeof(string));
-                table.Columns.Add("Description", typeof(string));
-                table.Columns.Add("PDFPage", typeof(string));
+                    table.Columns.Add("Source", typeof(string));
+                    table.Columns.Add("Target", typeof(string));
+                    table.Columns.Add("Weight", typeof(string));
+                    table.Columns.Add("NavType", typeof(string));
+                    table.Columns.Add("Thumbnail", typeof(string));
+                    table.Columns.Add("URL", typeof(string));
+                    table.Columns.Add("Description", typeof(string));
+                    table.Columns.Add("PDFPage", typeof(string));
                 }
                 return table;
+            }
+
+            private void createSplitPDF(int pagenumber, PdfReader reader)
+            {
+                //Create Single PDF for this page only
+                if (createPDFs)
+                {
+                    string filename = pagenumber.ToString() + ".pdf";
+                    Document document = new Document();
+                    PdfCopy copy = new PdfCopy(document, new FileStream(outputfile + "\\" + filename, FileMode.Create));
+                    document.Open();
+                    copy.AddPage(copy.GetImportedPage(reader, pagenumber));
+                    document.Close();
+                }
+            }
+
+            private string getAnnotations(PdfReader reader, int pagenumber, out string pageOwner ) {
+                PdfDictionary page = reader.GetPageN(pagenumber);
+                PdfArray annots = page.GetAsArray(PdfName.ANNOTS);
+                string pageComments = "", pgOwner = ""; 
+                if (annots != null)
+                {
+                    foreach (PdfObject annot in annots.ArrayList)
+                    {
+                        PdfDictionary annotation = (PdfDictionary)PdfReader.GetPdfObject(annot);
+                        PdfName subType = (PdfName)annotation.Get(PdfName.SUBTYPE);
+                        if (PdfName.TEXT.Equals(subType) || PdfName.HIGHLIGHT.Equals(subType) || PdfName.INK.Equals(subType) || PdfName.FREETEXT.Equals(subType))
+                        {
+                            PdfString title = annotation.GetAsString(PdfName.T);            //Seems to store author
+                            PdfString contents = annotation.GetAsString(PdfName.CONTENTS);  //Visible Text
+                            pageComments = pageComments + contents.ToString() + "\r\n";
+                            pgOwner = pgOwner + title.ToString() + "\r\n";
+                        }
+                    }
+                }
+                pageOwner = pgOwner;
+                return pageComments;
+            }
+
+            private string ManageBookmarks()
+            {
+
+                return "";
+            }
+
+            private string ExtractText(int pagenumber, PdfReader reader, out string TitleText)
+            {
+                Rectangle mediabox = reader.GetPageSize(pagenumber);
+                //Extract Text from the page.  Have to reinitialise Text Extraction Strategy each time as otherwise you end up with all the text from the PDf - weird
+                PDFExtractor pdfExtract = new PDFExtractor();
+
+                var pdfText = "";
+                pdfText = PdfTextExtractor.GetTextFromPage(reader, pagenumber, pdfExtract.bodystrategy);
+                string pageText = Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes(pdfText)));
+                //Extract title text from page (some duplicated code here, leave it for now)  Note that all these declarations need stuff only known inside the loop
+                pdfText= PdfTextExtractor.GetTextFromPage(reader, pagenumber, pdfExtract.titlestrategy);
+                TitleText = Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes(pdfText)));
+                return pageText;
             }
 
             //Chop the input PDF into separate pages
             public int Split()
             {
                 int pageCount;
-                var filters = new RenderFilter[1];
+                
                 string thumbfile = System.IO.Path.GetFileNameWithoutExtension(inputfile);
                 FileInfo file = new FileInfo(inputfile);
+                //Create the GhostScript stuff here as it's expensive.   Might be better to encapsulate in a separate class come to think of it
                 string name = file.Name.Substring(0, file.Name.LastIndexOf("."));
                 string path = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
                 Ghostscript.NET.GhostscriptVersionInfo vesion;
@@ -178,49 +235,29 @@ namespace SplitPDF
                 rasterizer = new Ghostscript.NET.Rasterizer.GhostscriptRasterizer();
 
                 #region SetupTable
-                //Create a disconnected Data Table
                 metatable = createDataTable("DSA", new Dictionary<string, string>());
                 navtable = createDataTable("DSANav", new Dictionary<string, string>());
-                //Not sure how to add a thumbnail column - another job for later
                 #endregion
                 using (PdfReader reader = new PdfReader(inputfile))
                 {
                     pageCount = reader.NumberOfPages;
                     try { TabName = reader.Info["Title"]; } catch (Exception e) { }//Just consume an error, seems hit and miss whether the PDF gives back a title or not
                     //Iterate around the PDF, keep these outside loop so they propogate downwards
-                    string Chapter ="", Section = "", SubSection = "", SubSubSection = "", Sub3Section = "", Sub4Section = "", NavType = "", URL = "", pageType = "";
+                    string Chapter ="", Section = "", SubSection = "", SubSubSection = "", Sub3Section = "", Sub4Section = "", NavType = "", URL = "";
                     //Used to work out how to wire up navigation.  Pretty sure there might be a more elegant way to do this
                     string currentChapter = "", currentSection = "", currentSubSection = "", currentSubSubSection = "", currentSub3Section = "", oldPageType = "", oldPageText = "",Source = "",Target = "";
                     for (int pagenumber = 1; pagenumber <= reader.NumberOfPages; pagenumber++)
                     {
-                        string pageComments = "", pageOwner = "", pageText = "", NavWeight = "", NavDesc = "";  pageType = ""; 
+                        string pageComments = "", pageOwner = "", pageText = "", NavWeight = "", NavDesc = "",  pageType = "", titleText = ""; 
                         string thumbname = thumbfile + "-p" + pagenumber + ".jpg";
                         string BookmarkTitle = "", BookmarkLevel = "", PDFPage = "";
-                        Rectangle mediabox = reader.GetPageSize(pagenumber);
-                        var titlerect = new System.util.RectangleJ(distanceInPixelsFromLeft, distanceInPixelsFromBottom, width, height);
 
                         #region CreatePDF                        
-                        //Create Single PDF for this page only
-                        if (createPDFs) { 
-                            string filename = pagenumber.ToString() + ".pdf";
-                            Document document = new Document();
-                            PdfCopy copy = new PdfCopy(document, new FileStream(outputfile + "\\" + filename, FileMode.Create));
-                            document.Open();
-                            copy.AddPage(copy.GetImportedPage(reader, pagenumber));
-                            document.Close();
-                        }
+
                         #endregion CreatePDF
                         #region ExtractText    
-                        //Extract Text from the page.  Have to reinitialise Text Extraction Strategy each time as re-using for filter strategy later.  Declare here as plan to split into functions later! var for currentText means declare here
-                        ITextExtractionStrategy strategy = new SimpleTextExtractionStrategy();
-                        var currentText = PdfTextExtractor.GetTextFromPage(reader, pagenumber, strategy);
-                        pageText =Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default,Encoding.UTF8,Encoding.Default.GetBytes(currentText)));
-                        if(pageText == oldPageText) { pageType = "RunOn"; }     //Page is one of those where a single slide has more content than will fit on one PDF Page.  Is there a better way to check this?
-//Extract title text from page (some duplicated code here, leave it for now)  Note that all these declarations need stuff only known inside the loop
-                        filters[0] = new RegionTextRenderFilter(titlerect);
-                        strategy = new FilteredTextRenderListener(new LocationTextExtractionStrategy(),filters);
-                        currentText = PdfTextExtractor.GetTextFromPage(reader, pagenumber, strategy);
-                        string titleText = Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes(currentText)));
+                        pageText = ExtractText(pagenumber, reader, out titleText);
+                        if (pageText == oldPageText) { pageType = "RunOn"; }     //Page is one of those where a single slide has more content than will fit on one PDF Page.  Is there a better way to check this?
                         #endregion ExtractText
                         #region pageType
                         //Have a stab at working out page type
@@ -232,25 +269,32 @@ namespace SplitPDF
                         #endregion 
                         #region GetAnnotation
                         //Get Annotations for this page
-                        PdfDictionary page = reader.GetPageN(pagenumber);
-                        PdfArray annots = page.GetAsArray(PdfName.ANNOTS);
-                        if (annots != null) {
-                            foreach (PdfObject annot in annots.ArrayList)
-                            {
-                                PdfDictionary annotation = (PdfDictionary)PdfReader.GetPdfObject(annot);
-                                PdfName subType = (PdfName)annotation.Get(PdfName.SUBTYPE);
-                                if (PdfName.TEXT.Equals(subType) || PdfName.HIGHLIGHT.Equals(subType) || PdfName.INK.Equals(subType) || PdfName.FREETEXT.Equals(subType)) {
-                                    PdfString title = annotation.GetAsString(PdfName.T);            //Seems to store author
-                                    PdfString contents = annotation.GetAsString(PdfName.CONTENTS);  //Visible Text
-                                    pageComments = pageComments + contents.ToString() + "\r\n";
-                                    pageOwner = pageOwner + title.ToString() + "\r\n";
-                                }
-                            }
-                        }
+                        pageComments = getAnnotations(reader, pagenumber, out pageOwner);
                         #endregion
                         #region CheckBookmarks
-                        if (currentChapter == "") { currentChapter = "Entry"; } //Dummy Node to start things off
+                        int maxLevels = 6;
+                        string[] currentNav = new string[maxLevels];
+                        string[] thisNav = new string[maxLevels];
+                        string[] NavLevel = new string[maxLevels];
+                        string[] NvType = new string[3];
+                        NvType[0] = "Primary";
+                        NvType[1] = "Ref";
+                        NvType[2] = "Popup";
 
+                        NavLevel[0] = "Main";
+                        NavLevel[1] = "Child";
+                        NavLevel[2] = "SubChild";
+                        NavLevel[3] = "SubSubChild";
+                        NavLevel[4] = "Sub3Child";
+                        NavLevel[5] = "Sub4Child";
+
+                        if (currentNav[0] == "") { currentNav[0] = "Entry"; }
+
+
+
+                        if (currentChapter == "") { currentChapter = "Entry"; } //Dummy Node to start things off
+                        //Populates the dictionary, no return
+                        BookMarkList(inputfile);
                         //Check to see Bookmark for this page unless it's a run on page in which case we ignore it
                         if (bookmarksDict.ContainsKey(pagenumber.ToString()) && pageType != "RunOn")
                         {
@@ -449,17 +493,17 @@ namespace SplitPDF
 
             #endregion
 
-            internal string ExportToExcel(string Tabname, DataTable table)
+            internal void ExportToExcel(string excelfile, string Tabname, DataTable table)
             {
                 //Name Tab by Date? By definition right now this will always be a new file
-                string excelfile = outputfile + "\\" + Guid.NewGuid().ToString() + ".xlsx";
+                
+                ExcelExport ee = new ExcelExport();
                 //if (String.IsNullOrWhiteSpace(ExcelFile) == true) { ExcelFile = "./" + Guid.NewGuid().ToString() + ".xlsx"; }
                 if (String.IsNullOrWhiteSpace(Tabname)) { Tabname = "Tab " + DateTime.Now.ToShortDateString().Replace('/','-'); }
-                //So far only Export will allow thumbnails
-                ExcelHelper eh = new ExcelHelper();
-                eh.thumbheight = thumbnailheight;
-                eh.thumbwidth = thumbnailwidth;
-                if (File.Exists(excelfile))
+
+                ee.ExportToExcel(excelfile, Tabname, table);
+                //ee.ExportToExcel(excelfile + "nav", "Nav", splitter.navtable);
+/*                if (File.Exists(excelfile))
                 {
                     excelfile = eh.AppendToExcel(table, Tabname, excelfile);
                 }
@@ -468,6 +512,7 @@ namespace SplitPDF
                     excelfile = eh.ExportToExcel(table, Tabname, excelfile);
                 }
                 return excelfile;
+*/
             }
 
 

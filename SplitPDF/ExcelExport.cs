@@ -8,6 +8,7 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Spreadsheet;
 using SpreadsheetLight;
 using SpreadsheetLight.Drawing;
+using System.IO;
 
 namespace SplitPDF
 {
@@ -18,26 +19,49 @@ namespace SplitPDF
  
         public void ExportToExcel(string outputfile, string tabname, DataTable dt)
         {
-            using (SLDocument sl = new SLDocument())
-            {
-                int iStartRowIndex = 1;
-                int iStartColumnIndex = 2;
+            SLDocument sl;
+            //Test if outputfile exists
+            if (File.Exists(outputfile)) { sl = new SLDocument(outputfile); } else { sl = new SLDocument(); }
+            string curSheet = sl.GetCurrentWorksheetName();
+            if (curSheet.Equals(tabname)){
+                    //Do Nothing
+            } else { 
+                List<string> sheets = sl.GetWorksheetNames();
+                foreach (var sheet in sheets)
+                {
+                    if (sheet.Equals(tabname))
+                    {
+                        sl.SelectWorksheet(tabname);
+                    }
+                }
+                curSheet = sl.GetCurrentWorksheetName();
+                if (curSheet.Equals(tabname)) {
+                    //Do nothing
+                }else
+                {
+                    sl.AddWorksheet(tabname);
+                }
+            }
+            sl.DeleteWorksheet(SLDocument.DefaultFirstSheetName);
 
-                sl.ImportDataTable(iStartRowIndex, iStartColumnIndex, dt, true);
-                SLStyle style = sl.CreateStyle();
+            int iStartRowIndex = 1;
+            int iStartColumnIndex = 2;
+
+            sl.ImportDataTable(iStartRowIndex, iStartColumnIndex, dt, true);
+            SLStyle style = sl.CreateStyle();
 //                style.FormatCode = "yyyy/mm/dd hh:mm:ss";
 //                sl.SetColumnStyle(4, style);
-                // + 1 because the header row is included
-                // - 1 because it's a counting thing, because the start row is counted.
-                int iEndRowIndex = iStartRowIndex + dt.Rows.Count + 1 - 1;
-                // - 1 because it's a counting thing, because the start column is counted.
-                int iEndColumnIndex = iStartColumnIndex + dt.Columns.Count - 1;
-                SLTable table = sl.CreateTable(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex);
-                table.SetTableStyle(SLTableStyleTypeValues.Medium17);
-                //table.HasTotalRow = true;
-                //table.SetTotalRowFunction(5, SLTotalsRowFunctionValues.Sum);
-                sl.InsertTable(table);
+            int iEndRowIndex = iStartRowIndex + dt.Rows.Count + 1 - 1;
+            // - 1 because it's a counting thing, because the start column is counted.
+            int iEndColumnIndex = iStartColumnIndex + dt.Columns.Count - 1;
+            SLTable table = sl.CreateTable(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex);
+            table.SetTableStyle(SLTableStyleTypeValues.Medium17);
+            sl.InsertTable(table);
+
+            if (dt.TableName == "DSA")
+            {
                 //Rows 2 to end
+                //Only have thumbnails on the metadata one
                 sl.SetRowHeight(2, dt.Rows.Count, 110);
                 sl.SetColumnWidth(thumbCol, 30);
                 //for each row read Thumbcol value and load data 
@@ -49,20 +73,9 @@ namespace SplitPDF
                     pic.SetPosition(i, thumbCol);
                     sl.InsertPicture(pic);
                 }
-                sl.SaveAs(outputfile);
-                /*
-                                SLPicture pic = new SLPicture("C:\\code\\SplitPDF\\SplitPDF\\bin\\Debug\\Output\\ThumbBookmarkTesting-p20.png");
-                                pic.SetPosition(3, thumbCol);
-                                sl.InsertPicture(pic);
-                                sl.SaveAs(outputfile);
-                */
-                Console.WriteLine("End of program");
-
-
             }
-
-
-
+            sl.SaveAs(outputfile);
+            sl.Dispose();
         }
 
     }
