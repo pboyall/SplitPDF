@@ -70,7 +70,6 @@ namespace SplitPDF
             public string TabName { get; set; }
             public string outputfile { get; set; }
             public string inputfile { get; set; }
-            public string xmlfile { get; set; }
             public int exportDPI { get; set; }
             public int thumbnailheight { get; set; }
             public int thumbnailwidth { get; set; }
@@ -78,9 +77,41 @@ namespace SplitPDF
 
             //This perhaps isn't ideal, as in a perfect world we'd have a multi dimensional dictionary of dictionaries that could expand indefinitely.  
             //However, it's easier to understand this way
-            public Dictionary<string, object> bookmarksDict;           //i.e. Chapters
+            private Dictionary<string, object> bookmarksDict;           //i.e. Chapters
             public DataTable metatable;
             public DataTable navtable;
+            public static int maxLevels = 6;
+            private string[] currentNav = new string[maxLevels];
+            public string[] nvType = new string[3];
+            public string[] NavLevel = new string[maxLevels];
+
+            //Per Row data
+            public string[] thisNav = new string[maxLevels];
+            public string NavigationType;
+            public int NavWeight;
+            public int BookmarkLevel;
+            string Source;
+            string PDFPage;
+            string Target;
+            string NavType;
+            string oldPageText;
+            string NavDesc;
+            string PDFPageNo; 
+
+            public splitPDF()
+            {
+                //Mapping from number to text
+                nvType[0] = "Primary";
+                nvType[1] = "Ref";
+                nvType[2] = "Popup";
+                NavLevel[0] = "Main";
+                NavLevel[1] = "Child";
+                NavLevel[2] = "SubChild";
+                NavLevel[3] = "SubSubChild";
+                NavLevel[4] = "Sub3Child";
+                NavLevel[5] = "Sub4Child";
+            }
+
             //Get bookmarks, return number of bookmarks
             public int BookMarkList(string filename)
             {
@@ -197,13 +228,50 @@ namespace SplitPDF
                 return pageComments;
             }
 
-            private string ManageBookmarks()
+            private string ManageBookmarks(int pagenumber, string pageType)
             {
+                if (String.IsNullOrEmpty(currentNav[0]) ) { currentNav[0] = "Entry"; }                        //Dummy Node to start things off
+                //Check to see Bookmark for this page unless it's a run on page in which case we ignore it
+                if (bookmarksDict.ContainsKey(pagenumber.ToString()) && pageType != "RunOn")
+                {
+                    object wibble;
+                    //Don't forget arrays start at 0, level count starts at 1
+                    if (bookmarksDict.TryGetValue(pagenumber.ToString(), out wibble))
+                    {
+                        Dictionary<string, object> wibble1 = (Dictionary<string, object>)wibble;
+                        string BookmarkTitle = wibble1["Name"].ToString();
+                        BookmarkLevel = int.Parse(wibble1["Level"].ToString());
+                        PDFPageNo = wibble1["PDFPage"].ToString();
+                        NavDesc = "Title:" + BookmarkTitle + ",Level:" + BookmarkLevel;
+                        int NavSub = (BookmarkLevel - 2) < 0 ? 0 : (BookmarkLevel - 2);              //Only go back 2 if more than 2 to start with (i.e. BookmarkLevel 1 can only go back to 0)
+                        thisNav[BookmarkLevel-1] = BookmarkTitle;
+                        for (int i = BookmarkLevel; i < maxLevels; i++)
+                        {
+                            thisNav[i] = "";//Clear out Children at each level below this one, so children retain the parent that would have been set earlier but parents get cleaned out
+                        }
+                        NavWeight = 100 / BookmarkLevel;
+                        Target = thisNav[BookmarkLevel-1];              //Don't forget arrays start at 0
+                        Source = currentNav[NavSub];           //Levels 1 and 2 go back to level 0, all others go back to previous level
+                        NavigationType = NavLevel[BookmarkLevel-1];
+                        if (pageType == "Reference") { NavigationType = nvType[1]; }
 
-                return "";
+                        //Set the "olds" (redo as function)
+                        for (int i = 0; i < maxLevels; i++)
+                        {
+                            currentNav[i] = thisNav[i];//Copy over for next loop
+                        }
+
+                    }else
+                    {
+                        //No Bookmark for this page so just utterly ignore it
+                        PDFPage = pagenumber.ToString();
+                    }
+
+                }
+                        return "";
             }
 
-            private string ExtractText(int pagenumber, PdfReader reader, out string TitleText)
+           private string ExtractText(int pagenumber, PdfReader reader, out string TitleText)
             {
                 Rectangle mediabox = reader.GetPageSize(pagenumber);
                 //Extract Text from the page.  Have to reinitialise Text Extraction Strategy each time as otherwise you end up with all the text from the PDf - weird
@@ -222,7 +290,7 @@ namespace SplitPDF
             public int Split()
             {
                 int pageCount;
-                
+
                 string thumbfile = System.IO.Path.GetFileNameWithoutExtension(inputfile);
                 FileInfo file = new FileInfo(inputfile);
                 //Create the GhostScript stuff here as it's expensive.   Might be better to encapsulate in a separate class come to think of it
@@ -243,17 +311,15 @@ namespace SplitPDF
                     pageCount = reader.NumberOfPages;
                     try { TabName = reader.Info["Title"]; } catch (Exception e) { }//Just consume an error, seems hit and miss whether the PDF gives back a title or not
                     //Iterate around the PDF, keep these outside loop so they propogate downwards
-                    string Chapter ="", Section = "", SubSection = "", SubSubSection = "", Sub3Section = "", Sub4Section = "", NavType = "", URL = "";
-                    //Used to work out how to wire up navigation.  Pretty sure there might be a more elegant way to do this
-                    string currentChapter = "", currentSection = "", currentSubSection = "", currentSubSubSection = "", currentSub3Section = "", oldPageType = "", oldPageText = "",Source = "",Target = "";
+                    NavigationType = ""; oldPageText = ""; Source = ""; Target = ""; NavDesc = ""; PDFPageNo = "";
                     for (int pagenumber = 1; pagenumber <= reader.NumberOfPages; pagenumber++)
                     {
-                        string pageComments = "", pageOwner = "", pageText = "", NavWeight = "", NavDesc = "",  pageType = "", titleText = ""; 
+                        NavWeight = 0;
+                        string pageComments = "", pageOwner = "", pageText = "", pageType = "", titleText = "";
                         string thumbname = thumbfile + "-p" + pagenumber + ".jpg";
-                        string BookmarkTitle = "", BookmarkLevel = "", PDFPage = "";
 
                         #region CreatePDF                        
-
+                        createSplitPDF(pagenumber, reader);
                         #endregion CreatePDF
                         #region ExtractText    
                         pageText = ExtractText(pagenumber, reader, out titleText);
@@ -272,105 +338,25 @@ namespace SplitPDF
                         pageComments = getAnnotations(reader, pagenumber, out pageOwner);
                         #endregion
                         #region CheckBookmarks
-                        int maxLevels = 6;
-                        string[] currentNav = new string[maxLevels];
-                        string[] thisNav = new string[maxLevels];
-                        string[] NavLevel = new string[maxLevels];
-                        string[] NvType = new string[3];
-                        NvType[0] = "Primary";
-                        NvType[1] = "Ref";
-                        NvType[2] = "Popup";
 
-                        NavLevel[0] = "Main";
-                        NavLevel[1] = "Child";
-                        NavLevel[2] = "SubChild";
-                        NavLevel[3] = "SubSubChild";
-                        NavLevel[4] = "Sub3Child";
-                        NavLevel[5] = "Sub4Child";
-
-                        if (currentNav[0] == "") { currentNav[0] = "Entry"; }
-
-
-
-                        if (currentChapter == "") { currentChapter = "Entry"; } //Dummy Node to start things off
-                        //Populates the dictionary, no return
-                        BookMarkList(inputfile);
-                        //Check to see Bookmark for this page unless it's a run on page in which case we ignore it
-                        if (bookmarksDict.ContainsKey(pagenumber.ToString()) && pageType != "RunOn")
-                        {
-                            object wibble;
-                            if (bookmarksDict.TryGetValue(pagenumber.ToString(), out wibble)) {
-                                Dictionary<string, object> wibble1 = (Dictionary<string, object>)wibble;
-                                BookmarkTitle = wibble1["Name"].ToString();
-                                BookmarkLevel = wibble1["Level"].ToString();
-                                PDFPage = wibble1["PDFPage"].ToString();
-                                NavDesc = "Title" + BookmarkTitle + "Level " + BookmarkLevel;
-                                Target = BookmarkTitle;
-                                //Clear out Children at each level, so children retain the parent that would have been set earlier but parents get cleaned
-                                //Tidy up the Nav Setting which is in every branch - doesn't really need to be.
-                                switch (BookmarkLevel)
-                                {
-                                    case "1":
-                                        Chapter = BookmarkTitle;Section = ""; SubSection = ""; SubSubSection = ""; Sub3Section = ""; Sub4Section = "";
-                                        //Top Level Slide so Navigation will be back from the previous chapter?  At this point currentChapter will have the old Chapter in it (first time through the loop at level 1? Assumes PDF is in linear order)
-                                        Source = currentChapter; NavType = "Main";NavWeight = "100";
-                                        break;
-                                    case "2":
-                                        Section = BookmarkTitle; SubSection = ""; SubSubSection = ""; Sub3Section = ""; Sub4Section = "";
-                                        //Level 2, so Navigation as a child of the current chapter
-                                        Source = currentChapter; NavType = "Child"; NavWeight = "75";
-                                        if (pageType=="Reference") { NavType = "Reference"; }
-                                        break;
-                                    case "3":
-                                        SubSection = BookmarkTitle; SubSubSection = ""; Sub3Section = ""; Sub4Section = "";
-                                        Source = currentSection; NavType = "SubChild"; NavWeight = "50";
-                                        if (pageType == "Reference") { NavType = "SubReference";  }
-                                        break;
-                                    case "4":
-                                        SubSubSection = BookmarkTitle; Sub3Section = ""; Sub4Section = "";
-                                        Source = currentSubSection; NavType = "SubSubChild"; NavWeight = "30";
-                                        if (pageType == "Reference") { NavType = "SubSubReference"; }
-                                        break;
-                                    case "5":
-                                        Sub3Section = BookmarkTitle; Sub4Section = "";
-                                        Source = currentSubSubSection; NavType = "Sub3Child"; NavWeight = "20";
-                                        if (pageType == "Reference") { NavType = "Sub3Reference"; }
-                                        break;
-                                    case "6":
-                                        Sub4Section = BookmarkTitle;
-                                        Source = currentSub3Section; NavType = "Sub4Child"; NavWeight = "10";
-                                        if (pageType == "Reference") { NavType = "Sub4Reference"; }
-                                        break;
-                                }
-                            }
-                        }
-                        
+                        BookMarkList(inputfile);//Populates the dictionary, no return
+                        ManageBookmarks(pagenumber, pageType);
                         if (!bookmarksDict.ContainsKey(pagenumber.ToString()) || pageType == "RunOn")
                         {
                             //Clear out targeting for sitemap as this page is not a separate page
-                            Source = ""; Target = ""; NavWeight = ""; NavType = ""; thumbname = ""; BookmarkLevel = ""; PDFPage = ""; BookmarkTitle = "";NavDesc = "";
+                            NavWeight = 0; 
                         }
 
                         #endregion
                         string imagefile = GenerateThumbnail(rasterizer, pagenumber, vesion);
                         //Add to Excel Spreadsheet; This is probably where to also add the screenshot of the PDF to the Excel page, for now just linking to thumbname
 
-                        metatable.Rows.Add(pagenumber, pagenumber, titleText, pageText, pageType, Chapter, Section, SubSection, SubSubSection, Sub3Section, Sub4Section, pageComments, pageOwner, imagefile);
+                        metatable.Rows.Add(pagenumber, pagenumber, titleText, pageText, pageType, thisNav[0], thisNav[1], thisNav[2], thisNav[3], thisNav[4], thisNav[5], pageComments, pageOwner, imagefile);
                         //metatable.Rows.Add(pagenumber, pagenumber, titleText, pageText, pageType, Chapter, Section, SubSection, SubSubSection, Sub3Section, Sub4Section, pageComments, pageOwner, imagefile);
                         //Don't add empty rows (where a slides runs across multiple PDF pages)
-                        if (NavWeight != "") { navtable.Rows.Add(Source, Target, NavWeight, NavType, thumbname, "", NavDesc, PDFPage); }
-                        
-                        #region Olds
+                        if (NavWeight != 0) { navtable.Rows.Add(Source, Target, NavWeight, NavigationType, thumbname, "", NavDesc, PDFPageNo); }
 
-                        //Set the "olds" (redo as function)
-                        oldPageType = pageType;
                         oldPageText = pageText;
-                        currentChapter = Chapter;
-                        currentSection = Section;
-                        currentSubSection = SubSection;
-                        currentSubSubSection = SubSubSection;
-                        currentSub3Section = Sub3Section;
-                        #endregion
 
 
                     }
