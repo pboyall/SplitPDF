@@ -75,9 +75,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ExcelExport.cs" />
+    <Compile Include="PDFExtractor.cs" />
+    <Compile Include="PDFRenderer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SiteMap.cs" />
     <Compile Include="Slide.cs" />
+    <Compile Include="SplitPDF.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
