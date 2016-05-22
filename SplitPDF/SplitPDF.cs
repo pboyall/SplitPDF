@@ -35,17 +35,18 @@ namespace SplitPDF
         
         private string[] currentNav = new string[maxLevels];
 
-        //Per Row data
-        public string[] thisNav = new string[maxLevels];
-        public string NavigationType;
-        public int NavWeight;
-        public int BookmarkLevel;
-        string Source;
-        string PDFPage;
-        string Target;
-        string oldPageText;
-        string NavDesc;
-        string PDFPageNo;
+        //Per Row data - in the middle of refactoring this into an object
+        private string[] thisNav = new string[maxLevels];
+        private string NavigationType;
+        private int NavWeight;
+        private int BookmarkLevel;
+        private string Source;
+        private string PDFPage;
+        private string Target;
+        private string oldPageText;
+        private string NavDesc;
+        private string PDFPageNo;
+        private string BookmarkTitle;
         //Dictionary<string, string> metamapping = new Dictionary<string, string>();
 
         public splitPDF()
@@ -113,7 +114,7 @@ namespace SplitPDF
             if (tablename == "DSA")
             {
                 //Hard coded column list for now just to test
-                table.Columns.Add("PageReference", typeof(int));
+                table.Columns.Add("PageReference", typeof(string));
                 table.Columns.Add("PageOrder", typeof(int));
                 table.Columns.Add("Title", typeof(string));
                 table.Columns.Add("Text", typeof(string));
@@ -159,7 +160,7 @@ namespace SplitPDF
             }
         }
 
-        private string getAnnotations(PdfReader reader, int pagenumber, out string pageOwner)
+        private string getAnnotations(PdfReader reader, int pagenumber, out string pageOwner, ref Slide thisSlide)
         {
             PdfDictionary page = reader.GetPageN(pagenumber);
             PdfArray annots = page.GetAsArray(PdfName.ANNOTS);
@@ -176,6 +177,13 @@ namespace SplitPDF
                         PdfString contents = annotation.GetAsString(PdfName.CONTENTS);  //Visible Text
                         pageComments = pageComments + contents.ToString() + "\r\n";
                         pgOwner = pgOwner + title.ToString() + "\r\n";
+
+                        Comment thisComment = new Comment();
+                        thisComment.CommentDate = DateTime.Now;         //Not technically correct, but will suffice
+                        thisComment.Owner = title.ToString();
+                        thisComment.Text = contents.ToString();
+                        thisSlide.Comments.Add(0, thisComment);
+
                     }
                 }
             }
@@ -183,18 +191,18 @@ namespace SplitPDF
             return pageComments;
         }
 
-        private string ManageBookmarks(int pagenumber, string pageType)
+        private string ManageBookmarks(int pagenumber, ref Slide thisSlide)
         {
             if (String.IsNullOrEmpty(currentNav[0])) { currentNav[0] = "Entry"; }                        //Dummy Node to start things off
-                                                                                                         //Check to see Bookmark for this page unless it's a run on page in which case we ignore it
-            if (bookmarksDict.ContainsKey(pagenumber.ToString()) && pageType != "RunOn")
+            string retval = "";                                                                                 //Check to see Bookmark for this page unless it's a run on page in which case we ignore it
+            if (bookmarksDict.ContainsKey(pagenumber.ToString()))
             {
                 object wibble;
                 //Don't forget arrays start at 0, level count starts at 1
                 if (bookmarksDict.TryGetValue(pagenumber.ToString(), out wibble))
                 {
                     Dictionary<string, object> wibble1 = (Dictionary<string, object>)wibble;
-                    string BookmarkTitle = wibble1["Name"].ToString();
+                    BookmarkTitle = wibble1["Name"].ToString();
                     BookmarkLevel = int.Parse(wibble1["Level"].ToString());
                     PDFPageNo = wibble1["PDFPage"].ToString();
                     NavDesc = "Title:" + BookmarkTitle + ",Level:" + BookmarkLevel;
@@ -204,27 +212,37 @@ namespace SplitPDF
                     {
                         thisNav[i] = "";//Clear out Children at each level below this one, so children retain the parent that would have been set earlier but parents get cleaned out
                     }
-                    NavWeight = 100 / BookmarkLevel;
+                    NavWeight = 100 / BookmarkLevel;                    //TODO sort magic number
                     Target = thisNav[BookmarkLevel - 1];              //Don't forget arrays start at 0
                     Source = currentNav[NavSub];           //Levels 1 and 2 go back to level 0, all others go back to previous level
                     NavigationType = NavLevel[BookmarkLevel - 1];
-                    if (pageType == "Reference") { NavigationType = nvType[1]; }
+                    if (thisSlide.PageType.Contains("Reference")) { NavigationType = nvType[1] + NavigationType; }
+
+                    thisSlide.PageReference = BookmarkTitle;
+                    thisSlide.thisNav = thisNav;
+                    thisSlide.PageLevel = BookmarkLevel;
+                    thisSlide.navTable = new SlideNavigation();
+                    thisSlide.navTable.Source = Source;
+                    thisSlide.navTable.Target= Target;
+                    thisSlide.navTable.NavWeight= NavWeight;
+                    thisSlide.navTable.NavigationType = NavigationType;
+                    thisSlide.navTable.NavDesc = NavDesc;
+                    thisSlide.navTable.PDFPageNo = PDFPageNo;
 
                     //Set the "olds" (redo as function)
                     for (int i = 0; i < maxLevels; i++)
                     {
                         currentNav[i] = thisNav[i];//Copy over for next loop
                     }
-
+                    retval = "New";
                 }
-                else
-                {
-                    //No Bookmark for this page so just utterly ignore it
-                    PDFPage = pagenumber.ToString();
-                }
-
             }
-            return "";
+            else
+            {
+                //No Bookmark for this page so take it as part of the previous page
+                retval = "RunOn";
+            }
+            return retval;
         }
 
         private string ExtractText(int pagenumber, PdfReader reader, out string TitleText)
@@ -259,16 +277,23 @@ namespace SplitPDF
                 try { TabName = reader.Info["Title"]; } catch (Exception e) { }//Just consume an error, seems hit and miss whether the PDF gives back a title or not
                                                                                //Iterate around the PDF, keep these outside loop so they propogate downwards
                 NavigationType = ""; oldPageText = ""; Source = ""; Target = ""; NavDesc = ""; PDFPageNo = "";
+                Slide thisSlide = new Slide();
+                Slide oldSlide = new Slide();
                 for (int pagenumber = 1; pagenumber <= reader.NumberOfPages; pagenumber++)
                 {
                     NavWeight = 0;
-                    string pageComments = "", pageOwner = "", pageText = "", pageType = "", titleText = "";
+                    string pageComments = "", pageOwner = "", pageText = "", pageType = "", titleText = "", bookmarkreturn = "";
                     string thumbname = thumbfile + "-p" + pagenumber + ".jpg";
-
-              
                     createSplitPDF(pagenumber, reader);
                     pageText = ExtractText(pagenumber, reader, out titleText);
-                    if (pageText == oldPageText) { pageType = "RunOn"; }     //Page is one of those where a single slide has more content than will fit on one PDF Page.  Is there a better way to check this?
+                    //Can do a comparison here but not really necessary as checking for bookmarks instead if (pageText == oldPageText)
+                    thisSlide = new Slide();
+                    thisSlide.PageOrder = pagenumber;
+                    thisSlide.PageNumber = pagenumber;
+                    thisSlide.pdfPages.Add(pagenumber, "Start Page");
+                    thisSlide.Title = titleText;
+                    thisSlide.Text = pageText;
+
 
                     #region pageType
                     //Have a stab at working out page type
@@ -276,26 +301,39 @@ namespace SplitPDF
                     //Regular Expressions give me a headache
                     if (pageText.Contains("Reference"))
                     {
-                        pageType = "Reference";             //Really need an enum for these, but until we know what we're doing, text will work
+                        thisSlide.PageType = "Reference";            //Really need an enum for these, but until we know what we're doing, text will work
+                    }
+                    else
+                    {
+                        thisSlide.PageType = "Main";
                     }
                     #endregion
-                    pageComments = getAnnotations(reader, pagenumber, out pageOwner);
+                    pageComments = getAnnotations(reader, pagenumber, out pageOwner, ref thisSlide);
                     #region CheckBookmarks
 
                     BookMarkList(inputfile);//Populates the dictionary, no return
-                    ManageBookmarks(pagenumber, pageType);
-
-                    if (!bookmarksDict.ContainsKey(pagenumber.ToString()) || pageType == "RunOn")
-                    {
-                        NavWeight = 0; //Clear out targeting for sitemap as this page is not a separate page
+                    bookmarkreturn = ManageBookmarks(pagenumber, ref thisSlide);       //Passing by ref - clunky but works for now
+                    if (bookmarkreturn != "New") {
+                        thisSlide = oldSlide;                   //Recover the old values
+                        thisSlide.pdfPages.Add(pagenumber, "Non Bookmarked Page");
+                        thisSlide.PageType += "Multiple";
+                        thisSlide.navTable.NavWeight = 0;
                     }
+                    //If this is not a separate page (no bookmark or flagged as a "RunOn" page) then don't add navigation for it  Not sure this needs doing now, can do above
+//                    if (!bookmarksDict.ContainsKey(pagenumber.ToString()) || pageType == "RunOn")
+//                    {
+//                        NavWeight = 0; 
+//                    }
                     #endregion
-                    string imagefile = renderer.GenerateThumbnail(pagenumber);
-                    //Add to datatable
-                    
-                    metatable.Rows.Add(pagenumber, pagenumber, titleText, pageText, pageType, thisNav[0], thisNav[1], thisNav[2], thisNav[3], thisNav[4], thisNav[5], pageComments, pageOwner, imagefile);
-                    //Don't add empty rows (where a slides runs across multiple PDF pages)
-                    if (NavWeight != 0) { navtable.Rows.Add(Source, Target, NavWeight, NavigationType, thumbname, "", NavDesc, PDFPageNo); }
+                    thisSlide.Thumbnail = renderer.GenerateThumbnail(pagenumber);
+                    //Add to datatables, don't add empty rows (where a slides runs across multiple PDF pages) to NavTable
+                    metatable.Rows.Add(thisSlide.PageReference, thisSlide.PageNumber, thisSlide.Title, thisSlide.Text, thisSlide.PageType, thisSlide.thisNav[0], thisSlide.thisNav[1], thisSlide.thisNav[2], thisSlide.thisNav[3], thisSlide.thisNav[4], thisSlide.thisNav[5], pageComments, pageOwner, thisSlide.Thumbnail);
+                    if (thisSlide.navTable.NavWeight != 0) { navtable.Rows.Add(Source, Target, NavWeight, NavigationType, thumbname, "", NavDesc, PDFPageNo); }
+                    //Populate Slide object (actually, smart way would be to do this at the top as we go along)
+
+
+                    //Do the olds
+                    oldSlide = thisSlide;
                     oldPageText = pageText;
                 }
                 return pageCount;
@@ -379,10 +417,10 @@ namespace SplitPDF
         {
             DataTable table;
             //Name Tab by Date? By definition right now this will always be a new file
-            switch (type){
-                case "meta":  table = this.metatable;
+            switch (type.ToUpper()){
+                case "META":  table = this.metatable;
                     break;
-                case "nav": table = this.navtable;
+                case "NAV": table = this.navtable;
                     break;
                 default: table = this.metatable;
                     break;

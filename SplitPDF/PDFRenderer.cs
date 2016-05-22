@@ -32,8 +32,7 @@ namespace SplitPDF
         {
 
             string path = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
-            Ghostscript.NET.GhostscriptVersionInfo vesion;
-            Ghostscript.NET.Rasterizer.GhostscriptRasterizer rasterizer = null;
+            rasterizer = null;
             vesion = new Ghostscript.NET.GhostscriptVersionInfo(new System.Version(0, 0, 0), path + @"\gsdll64.dll", string.Empty, Ghostscript.NET.GhostscriptLicense.GPL);
             rasterizer = new Ghostscript.NET.Rasterizer.GhostscriptRasterizer();
 
