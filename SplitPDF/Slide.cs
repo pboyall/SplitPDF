@@ -8,7 +8,8 @@ namespace SplitPDF
 {
     class Slide
     {
-//Metadata
+                          //TODO Magic numbers for now
+                                                            //Metadata
         internal int SlideRef { get; set; }             //Unique ID so we can track slides across PDF versions
         public string PageReference { get; set; }       //English Reference from Bookmark
         public int PageLevel { get; set; }              //Bookmark Level
@@ -31,6 +32,8 @@ namespace SplitPDF
         {
             Comments = new Dictionary<int, Comment>();
             pdfPages = new SortedDictionary<int, string>();
+            thisNav = new string[splitPDF.maxLevels];
+            navTable = new SlideNavigation();
         }
 
     }
@@ -40,6 +43,7 @@ namespace SplitPDF
         public string Text { get; set; }
         public string Owner { get; set; }
         public DateTime CommentDate { get; set; }
+        public int pagenumber;
     }
 
     //Slide may navigate to many other slides; but this serves double duty as the old NavTable structure hence loads of superfluous variables

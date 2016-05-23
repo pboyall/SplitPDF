@@ -30,7 +30,8 @@ namespace SplitPDF
             splitter.renderer.exportDPI = 300;
             splitter.renderer.thumbnailheight = 150;
             splitter.renderer.thumbnailwidth = 200;
-            splitter.createPDFs = true;
+            splitter.createPDFs = false;
+            splitter.createThumbs = false;
             //Execute code
             int returned = splitter.Split();
             string excelfile = splitter.outputfile + "\\" + Guid.NewGuid().ToString() + ".xlsx";

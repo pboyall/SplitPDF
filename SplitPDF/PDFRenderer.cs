@@ -38,15 +38,14 @@ namespace SplitPDF
 
         }
 
-        public string GenerateThumbnail(int pagenumber)
+        public string GenerateThumbnail(int pagenumber, string thumbFilePath)
         {
             //TODO clean up hard coded name strings
-            string imagefile = System.IO.Path.Combine(outputfile, System.IO.Path.GetFileNameWithoutExtension(inputfile) + "-p" + pagenumber + ".jpg");
-            string thumbFilePath = System.IO.Path.Combine(outputfile, "Thumb" + System.IO.Path.GetFileNameWithoutExtension(inputfile) + "-p" + pagenumber + ".png");
+            string imagefile  = System.IO.Path.Combine(outputfile, System.IO.Path.GetFileNameWithoutExtension(inputfile) + "-p" + pagenumber + ".png");
             rasterizer.Open(inputfile, vesion, false);
             string pageFilePath = imagefile;
             System.Drawing.Image img = rasterizer.GetPage(this.exportDPI, this.exportDPI, pagenumber);
-            img.Save(pageFilePath, ImageFormat.Jpeg);
+            img.Save(pageFilePath, ImageFormat.Png);
             rasterizer.Close();
             img.Save(thumbFilePath, ImageFormat.Png);
             resizeImage(thumbFilePath);
