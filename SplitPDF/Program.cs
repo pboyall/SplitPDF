@@ -27,11 +27,14 @@ namespace SplitPDF
             string mydirectory = System.IO.Path.GetDirectoryName(Environment.GetCommandLineArgs()[0]).ToString();
             splitter.inputfile = mydirectory + "\\BookmarkTesting.pdf";
             splitter.outputfile = mydirectory + "\\Output";     //Just testing
+            splitter.comparisonfile = mydirectory + "\\Output\\2244bb38-5e6b-450a-80dd-c490ec6344b0.xlsx";     //Just testing
             splitter.renderer.exportDPI = 300;
             splitter.renderer.thumbnailheight = 150;
             splitter.renderer.thumbnailwidth = 200;
             splitter.createPDFs = false;
-            splitter.createThumbs = false;
+            splitter.createThumbs = true;
+            splitter.outputExcel = true;
+            splitter.consolidatePages = true;
             //Execute code
             int returned = splitter.Split();
             string excelfile = splitter.outputfile + "\\" + Guid.NewGuid().ToString() + ".xlsx";

@@ -15,8 +15,9 @@ namespace SplitPDF
     class ExcelExport
     {
 
-        public int thumbCol = 14;
- 
+        public int thumbCol = 16;
+        public int textCol = 6;
+
         public void ExportToExcel(string outputfile, string tabname, DataTable dt)
         {
             SLDocument sl;
@@ -49,8 +50,9 @@ namespace SplitPDF
 
             sl.ImportDataTable(iStartRowIndex, iStartColumnIndex, dt, true);
             SLStyle style = sl.CreateStyle();
-//                style.FormatCode = "yyyy/mm/dd hh:mm:ss";
-//                sl.SetColumnStyle(4, style);
+            style.SetWrapText(true);
+            //                style.FormatCode = "yyyy/mm/dd hh:mm:ss";
+            //                sl.SetColumnStyle(4, style);
             int iEndRowIndex = iStartRowIndex + dt.Rows.Count + 1 - 1;
             // - 1 because it's a counting thing, because the start column is counted.
             int iEndColumnIndex = iStartColumnIndex + dt.Columns.Count - 1;
@@ -62,10 +64,13 @@ namespace SplitPDF
             {
                 //Rows 2 to end
                 //Only have thumbnails on the metadata one
-                sl.SetRowHeight(2, dt.Rows.Count, 110);
+                sl.SetRowHeight(iStartRowIndex+1, iEndRowIndex, 110);
+                sl.SetColumnWidth(iStartColumnIndex, 20);
+                sl.SetColumnWidth(textCol, 30);
+                sl.SetColumnStyle(textCol, style);
                 sl.SetColumnWidth(thumbCol, 30);
                 //for each row read Thumbcol value and load data 
-                for (int i = iStartRowIndex; i < dt.Rows.Count; i++)
+                for (int i = iStartRowIndex; i < iEndRowIndex; i++)
                 {
                     string filepath;
                     filepath = dt.Rows[i-1][thumbCol-1].ToString();

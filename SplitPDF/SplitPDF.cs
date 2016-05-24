@@ -24,9 +24,14 @@ namespace SplitPDF
         public string TabName { get; set; }
         public string outputfile { get; set; }
         public string inputfile { get; set; }
+        public string comparisonfile { get; set; }
+
         internal PDFRenderer renderer { get; set; }
         public Boolean createPDFs { get; set; }         //set to true to create individual PDFs
         public Boolean createThumbs { get; set; }         //set to true to create thumbnails
+        public Boolean outputExcel { get; set; }         //set to true to create Excel Output
+        public Boolean consolidatePages { get; set; }         //set to true to consolidate "RunOn" PDFs
+
         //Configuration values
         private string[] nvType = new string[3];             //TODO Magic numbers for now
         private string[] NavLevel = new string[maxLevels];
@@ -105,6 +110,7 @@ namespace SplitPDF
                 //Hard coded column list for now just to test
                 table.Columns.Add("PageReference", typeof(string));
                 table.Columns.Add("PageOrder", typeof(int));
+                table.Columns.Add("PDFPages", typeof(string));
                 table.Columns.Add("Title", typeof(string));
                 table.Columns.Add("Text", typeof(string));
                 table.Columns.Add("PageType", typeof(string));
@@ -196,7 +202,7 @@ namespace SplitPDF
                     BookmarkLevel = int.Parse(wibble1["Level"].ToString());
                     thisSlide.navTable.PDFPageNo = wibble1["PDFPage"].ToString();
                     int NavSub = (BookmarkLevel - 2) < 0 ? 0 : (BookmarkLevel - 2);              //Only go back 2 if more than 2 to start with (i.e. BookmarkLevel 1 can only go back to 0)
-                    thisSlide.thisNav = currentNav;
+                    currentNav.CopyTo(thisSlide.thisNav, 0);                                    //Do not just assign
                     thisSlide.navTable = new SlideNavigation();
                     thisSlide.navTable.NavDesc = "Title:" + thisSlide.PageReference + ",Level:" + BookmarkLevel;
                     thisSlide.navTable.Source = currentNav[NavSub];           //Levels 1 and 2 go back to level 0, all others go back to previous level
@@ -208,6 +214,7 @@ namespace SplitPDF
                     thisSlide.navTable.NavWeight= 100 / BookmarkLevel;                    //TODO sort magic number
                     thisSlide.navTable.Target= thisSlide.thisNav[BookmarkLevel - 1];              //Don't forget arrays start at 0
                     thisSlide.navTable.NavigationType = NavLevel[BookmarkLevel - 1];
+//This will grow more complicated when we have thought more about it
                     if (thisSlide.PageType.Contains("Reference")) { thisSlide.navTable.NavigationType = nvType[1] + thisSlide.navTable.NavigationType; }
                     thisSlide.PageLevel = BookmarkLevel;
 
@@ -258,9 +265,11 @@ namespace SplitPDF
                                                                                //Iterate around the PDF, keep these outside loop so they propogate downwards
                 Slide thisSlide = new Slide();
                 Slide oldSlide = new Slide();
+                SortedDictionary<int, Slide> Slides = new SortedDictionary<int, Slide>();   //Collection of all the Slides found in this presentation
+
                 for (int pagenumber = 1; pagenumber <= reader.NumberOfPages; pagenumber++)
                 {
-                    string bookmarkreturn = "", pageComments="", pageOwner= "";
+                    string bookmarkreturn = "";
                     string thumbname = System.IO.Path.Combine(outputfile, "Thumb" + System.IO.Path.GetFileNameWithoutExtension(inputfile) + "-p" + pagenumber + ".png");
                     createSplitPDF(pagenumber, reader);
                     thisSlide = new Slide();
@@ -270,6 +279,8 @@ namespace SplitPDF
                     thisSlide.PageType = getPageType(thisSlide);
 
                     getAnnotations(reader, pagenumber, ref thisSlide);          //Adds to thisSlide.Annotations.  Passing by ref - clunky but works for now.  
+                    if (createThumbs) thisSlide.Thumbnail = renderer.GenerateThumbnail(pagenumber, thumbname); else  thisSlide.Thumbnail = thumbname;
+
                     #region CheckBookmarks
                     BookMarkList(inputfile);//Populates the dictionary, no return
                     bookmarkreturn = ManageBookmarks(pagenumber, ref thisSlide);       //Adds all the Nav + PageReference + PageLevel
@@ -278,39 +289,39 @@ namespace SplitPDF
                         copyOldValues(ref thisSlide, oldSlide);//Recover the old values
                         thisSlide.pdfPages.Add(pagenumber, "Non Bookmarked Page, presumed to be a run on");
                         thisSlide.PageType += "Multiple";
-                        thisSlide.navTable.NavWeight = 0;
+                        if (consolidatePages) Slides.Remove(pagenumber - 1); else thisSlide.navTable.NavWeight = 0;
                     }else
                     {
                         thisSlide.PageOrder = pagenumber;                           //Just using pageNumber
                         thisSlide.pdfPages.Add(pagenumber, "Start Page");
                     }
-                    //If this is not a separate page (no bookmark or flagged as a "RunOn" page) then don't add navigation for it  Not sure this needs doing now, can do above
-//                    if (!bookmarksDict.ContainsKey(pagenumber.ToString()) || pageType == "RunOn")
-//                    {
-//                        NavWeight = 0; 
-//                    }
                     #endregion
-                    if (createThumbs) { 
-                        thisSlide.Thumbnail = renderer.GenerateThumbnail(pagenumber, thumbname);
-                    }else
-                    {
-                        thisSlide.Thumbnail = thumbname;
-                    }
-                    foreach (var CommentPair in thisSlide.Comments )
-                    {
-                        Comment slideComment = CommentPair.Value;
-                        pageComments = pageComments + slideComment.Text;
-                        pageOwner = pageOwner + slideComment.Owner;
-                    }
-
-                    //Add to datatables, don't add empty rows (where a slides runs across multiple PDF pages) to NavTable
-                    metatable.Rows.Add(thisSlide.PageReference, thisSlide.PageNumber, thisSlide.Title, thisSlide.Text, thisSlide.PageType, thisSlide.thisNav[0], thisSlide.thisNav[1], thisSlide.thisNav[2], thisSlide.thisNav[3], thisSlide.thisNav[4], thisSlide.thisNav[5], pageComments, pageOwner, thisSlide.Thumbnail);
-                    if (thisSlide.navTable.NavWeight != 0) { navtable.Rows.Add(thisSlide.navTable.Source, thisSlide.navTable.Target, thisSlide.navTable.NavWeight, thisSlide.navTable.NavigationType, thisSlide.Thumbnail, "", thisSlide.navTable.NavDesc, thisSlide.navTable.PDFPageNo); }
-                    //Populate Slide object (actually, smart way would be to do this at the top as we go along)
-
+                    //Add to Slides Collection
+                    Slides.Add(pagenumber, thisSlide);
 
                     //Do the olds
                     oldSlide = thisSlide;
+                    thisSlide = null;
+                }
+                thisSlide = null;
+                bookmarksDict = null;
+
+                //Add to datatables, don't add empty rows (where a slides runs across multiple PDF pages) to NavTable
+                foreach(var SlideDict in Slides.OrderBy(ts=>ts.Key)) {
+                    Slide theSlide = SlideDict.Value;
+                    String pageComments = "", pageOwner = "";                    //Cater for multiple comments on a single page
+                    int commentCounter = 1;
+                    foreach (var CommentPair in theSlide.Comments)
+                    {
+                        Comment slideComment = CommentPair.Value;
+                        pageComments = pageComments + " (" + commentCounter + "), page " +  slideComment.pagenumber + ":" + slideComment.Text;
+                        pageOwner = pageOwner + " (" + commentCounter + "), " + slideComment.Owner;
+                        commentCounter++;
+                    }
+                    string pdfPages = theSlide.pdfPages.Keys.Min().ToString() + "-" + theSlide.pdfPages.Keys.Max().ToString();
+
+                    metatable.Rows.Add(theSlide.PageReference, theSlide.PageNumber, pdfPages, theSlide.Title, theSlide.Text, theSlide.PageType, theSlide.thisNav[0], theSlide.thisNav[1], theSlide.thisNav[2], theSlide.thisNav[3], theSlide.thisNav[4], theSlide.thisNav[5], pageComments, pageOwner, theSlide.Thumbnail);
+                    if (theSlide.navTable.NavWeight != 0) { navtable.Rows.Add(theSlide.navTable.Source, theSlide.navTable.Target, theSlide.navTable.NavWeight, theSlide.navTable.NavigationType, theSlide.Thumbnail, "", theSlide.navTable.NavDesc, theSlide.navTable.PDFPageNo); }
                 }
                 return pageCount;
             }
@@ -331,36 +342,58 @@ namespace SplitPDF
         private void copyOldValues(ref Slide thisSlide, Slide oldSlide)
         {
             //Duplicate relevant values from previous slide, I don't feel we should have rows for each page of the PDF, but doing that for now as Excel Base
+            //Probably should write a "copyoldvalue" function instead of having each row separate like this - but that would involve reflecting the properties of the object, hassle and would not run under .net Core
             // Leaving Slide Ref out for now as not yet using it (everything still Excel Based)
             thisSlide.PageReference = oldSlide.PageReference;
             thisSlide.PageLevel = oldSlide.PageLevel;
             thisSlide.PageOrder = oldSlide.PageOrder;
-            //Page Number always unique at the moment - if we later change to consolidate then it would be just the start number
-            //Title and Text are set by ExtractText and for Run-On pages should be the same, handy to keep a copy if they are different
-            //Can do a comparison check here in fact
-            if (thisSlide.Text != oldSlide.Text)
-            {
-                //Don't treat as run on?  Write out new row? Or Merge with existing?  Decisions decisions
-                thisSlide.Text = oldSlide.Text + thisSlide.Text;
+            if (consolidatePages) {
+                thisSlide.PageNumber = oldSlide.PageNumber;                    //Consolidate then it would be just the start number
+                if ((thisSlide.Text != oldSlide.Text))//Title and Text are set by ExtractText and for Run-On pages should be the same, if they are different and consolidating need to merge them
+                {
+                    thisSlide.Text = oldSlide.Text + thisSlide.Text;                //Don't treat as run on?  Write out new row? Or Merge with existing? If Consolidating, merge them.  Otherwise leave separate
+                }
+                if ((thisSlide.Title != oldSlide.Title))//Title and Text are set by ExtractText and for Run-On pages should be the same, if they are different and consolidating need to merge them
+                {
+                    thisSlide.Title= oldSlide.Title + thisSlide.Title;                //Don't treat as run on?  Write out new row? Or Merge with existing? If Consolidating, merge them.  Otherwise leave separate
+                }
+                copyAnnotations(ref thisSlide, oldSlide);                       //Comments are done outside - they really are per page.  Consolidate using copyAnnotations function written
+                thisSlide.Thumbnail = oldSlide.Thumbnail;
             }
             //PageType is set outside here
-            thisSlide.thisNav = oldSlide.thisNav;
-            //Comments are done outside - they really are per page.  May have to consolidate? copyAnnotations function written
-            copyAnnotations(ref thisSlide, oldSlide);
-            //Thumbnail is unique for each pdf page, but eventually I think we will only want the "top" thumbnail for a given run of slides
+            //Set the "olds" (redo as function) - .net does arrays by reference so if you just do thisNav = oldNav then you only every have one nav array!
+            oldSlide.thisNav.CopyTo(thisSlide.thisNav, 0);
+            thisSlide.pdfPages = new SortedDictionary<int, string>(oldSlide.pdfPages);         
             //Description has no value set currently - was to get a column for humans to write to in the spreadsheet
-            thisSlide.navTable = oldSlide.navTable;
+            thisSlide.navTable = (SlideNavigation)oldSlide.navTable.Clone();         
             //Navlinks not used yet
+            //thisSlide.NavLinks = new Dictionary<string, SlideNavigation>(oldSlide.NavLinks);         
         }
 
         private void copyAnnotations(ref Slide thisSlide,  Slide oldSlide)
         {
+            int oldSlideComments = oldSlide.Comments.Count;
+            //Insert oldSlide's values into dictionary then add current Slide's comments (so retain order for the keys)
+            Dictionary<int, Comment> newComments = new Dictionary<int, Comment>();
             foreach (var note in oldSlide.Comments)
             {
-                thisSlide.Comments.Add(note.Key + thisSlide.Comments.Count, note.Value);
+                newComments.Add(note.Key, note.Value);
+                //thisSlide.Comments.Add(note.Key + thisSlide.Comments.Count, note.Value);
             }
+            foreach (var note in thisSlide.Comments)
+            {
+                newComments.Add(note.Key + oldSlideComments, note.Value);
+            }
+            thisSlide.Comments = new Dictionary<int, Comment>(newComments);
+        }
+        //Can't do generic
+        private void IncrementCount(Dictionary<int, Comment> someDictionary, int id)
+        {
+            int currentCount;
+            
 
         }
+
 
         private string getPageType(Slide thisSlide)
         {

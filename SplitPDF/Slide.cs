@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SplitPDF
 {
-    class Slide
+    class Slide:ICloneable
     {
                           //TODO Magic numbers for now
                                                             //Metadata
@@ -26,7 +26,7 @@ namespace SplitPDF
         public SlideNavigation navTable { get; set; }
 
         //Navigation Dictionary (aim is to replace Nav Table above with more fluid structure)
-        Dictionary<string, SlideNavigation> NavLinks { get; set; }      //Other slides to which this slide links
+        public Dictionary<string, SlideNavigation> NavLinks { get; set; }      //Other slides to which this slide links
 
         public Slide()
         {
@@ -36,18 +36,50 @@ namespace SplitPDF
             navTable = new SlideNavigation();
         }
 
+        public object Clone()
+        {
+            return new Slide
+            {
+                SlideRef = this.SlideRef,
+                PageReference = this.PageReference,
+                PageLevel = this.PageLevel,
+                PageOrder = this.PageOrder,
+                PageNumber = this.PageNumber,
+                Title = this.Title,
+                Text = this.Text,
+                PageType = this.PageType,
+                thisNav = this.thisNav,
+                Comments = new Dictionary<int, Comment>(Comments),
+                Thumbnail = this.Thumbnail,
+                pdfPages = new SortedDictionary<int, string>(this.pdfPages),
+                description = this.description,
+                navTable = (SlideNavigation)this.navTable.Clone()
+            };
+        }
     }
 
-    class Comment
+    class Comment : ICloneable
     {
         public string Text { get; set; }
         public string Owner { get; set; }
         public DateTime CommentDate { get; set; }
         public int pagenumber;
+
+        public object Clone()
+        {
+            return new Comment
+            {
+                Text = this.Text,
+                Owner = this.Owner,
+                CommentDate = this.CommentDate,
+                pagenumber = this.pagenumber
+            };
+        }
     }
 
     //Slide may navigate to many other slides; but this serves double duty as the old NavTable structure hence loads of superfluous variables
-    class SlideNavigation {
+    class SlideNavigation : ICloneable
+    {
 
         public string Source { get; set; } //Optional, cos we know the source, it's this slide!
         public string Target { get; set; }
@@ -59,7 +91,41 @@ namespace SplitPDF
         public string URL { get; set; }             
         public string PDFPageNo { get; set; }              //Optional, same as the pagenumber above
 
+        public object Clone()
+        {
+            return new SlideNavigation
+            {
+                Source = this.Source,
+                Target = this.Target,
+                NavigationType = this.NavigationType,
+                NavWeight = this.NavWeight,
+                thumbname = this.thumbname,
+                NavDesc = this.NavDesc,
+                URL = this.URL,
+                PDFPageNo = this.PDFPageNo
+            };
+        }
+
     }
+
+    //Might need a generic "Slide Sub Child" class and then inherit.  Dunno.
+
+    class SlideReference : ICloneable
+    {
+        internal int SlideRef { get; set; }
+        public string Text { get; set; }
+
+        public object Clone()
+        {
+            return new SlideReference
+            {
+                SlideRef = this.SlideRef,
+                Text = this.Text
+            };
+        }
+
+    }
+
 
 
 }
