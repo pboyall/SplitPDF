@@ -8,8 +8,26 @@ namespace SplitPDF
 {
     class Slide:ICloneable
     {
-                          //TODO Magic numbers for now
-                                                            //Metadata
+
+
+        //Metadata
+        //Reference Image - Thumbnail
+        //Slide Number - SlideNumber 
+        //Display Order - PageOrder
+        //Source - Source
+        //Key Message Name - PageReference
+        //Description - PageReference
+        //Product Message Category
+        //External ID
+        //Additional Notes
+
+        //Paul's list
+        //Presentation Name - from parent presentation
+        //Status
+        //Position - PageOrder
+        //Visible Name - Page Reference
+        //Concatengy Key Message Name - ExternalID
+
         internal int SlideRef { get; set; }             //Unique ID so we can track slides across PDF versions
         public string PageReference { get; set; }       //English Reference from Bookmark
         public int PageLevel { get; set; }              //Bookmark Level
@@ -24,9 +42,28 @@ namespace SplitPDF
         public SortedDictionary<int, string> pdfPages{ get; set; }        //The pages which make up a slide
         public string description{ get; set; }              //English Description of the slide
         public SlideNavigation navTable { get; set; }
+        
+        //*** Fields needed to tie up with Metadata
+        public decimal SlideNumber {
+            get { return PageOrder; }//Read only field - no point setting it at this, er, point
+        }              
+        public string Source { get; set; }              //To tie up with Metadata
+        public string ProductMessageCategory { get; set; }              //To tie up with Metadata, should be an enum from somewhere
+        public string ExternalID { get
+            {
+                return "";
+            }
+        }
+
+        //*** Fields needed to tie up with Paul's sheet
+        public Presentation presentation { get; set; }
+        public string status { get; set; }
+
 
         //Navigation Dictionary (aim is to replace Nav Table above with more fluid structure)
         public Dictionary<string, SlideNavigation> NavLinks { get; set; }      //Other slides to which this slide links
+        //Maybe add a "Parent Slide" property [could be covered by navTable Source] or ChildSlides Dictionary?
+
 
         public Slide()
         {
@@ -34,9 +71,10 @@ namespace SplitPDF
             pdfPages = new SortedDictionary<int, string>();
             thisNav = new string[splitPDF.maxLevels];
             navTable = new SlideNavigation();
+            Source = "LO"; //Always is for us
         }
 
-        public object Clone()
+       public object Clone()
         {
             return new Slide
             {
@@ -53,7 +91,10 @@ namespace SplitPDF
                 Thumbnail = this.Thumbnail,
                 pdfPages = new SortedDictionary<int, string>(this.pdfPages),
                 description = this.description,
-                navTable = (SlideNavigation)this.navTable.Clone()
+                navTable = (SlideNavigation)this.navTable.Clone(),
+                Source = this.Source,
+                ProductMessageCategory = this.ProductMessageCategory,
+                presentation = this.presentation
             };
         }
     }

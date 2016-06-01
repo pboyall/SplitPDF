@@ -29,7 +29,6 @@ namespace SplitPDF
         internal PDFRenderer renderer { get; set; }
         public Boolean createPDFs { get; set; }         //set to true to create individual PDFs
         public Boolean createThumbs { get; set; }         //set to true to create thumbnails
-        public Boolean outputExcel { get; set; }         //set to true to create Excel Output
         public Boolean consolidatePages { get; set; }         //set to true to consolidate "RunOn" PDFs
 
         //Configuration values
@@ -71,32 +70,38 @@ namespace SplitPDF
             {
                 iterateBookmarks(ref bookmarklist, bookmarks, 1);
             }
+            if (bookmarks != null) { 
             numberofbookmarks = bookmarks.Count;
+            }else { numberofbookmarks = 0; }
             return numberofbookmarks;
         }
         //Recursive routine to iterate the bookmarks in the passed in bookmark dictionary (bookmarks) and add them to the *global* bookmark dictionary object (bookmarksDict)
         private void iterateBookmarks(ref string bookmarklist, IList<Dictionary<string, object>> bookmarks, int level)
         {
             Console.WriteLine("Iterating Level " + level);
-            foreach (var bd in bookmarks)
+            if (bookmarks != null)
             {
-                string bookmarkname, bookmarkpage, bookmarkpagenumber;
-                bookmarkname = ""; bookmarkpage = ""; bookmarkpagenumber = "";
-                Dictionary<string, object> bookmarkdetails = new Dictionary<string, object>();
-                if (bd.ContainsKey("Kids"))
+                foreach (var bd in bookmarks)
                 {
-                    //Deal with children
-                    IList<Dictionary<string, object>> bdkids = (IList<Dictionary<string, object>>)bd["Kids"];
-                    iterateBookmarks(ref bookmarklist, bdkids, level + 1);
+                    string bookmarkname, bookmarkpage, bookmarkpagenumber;
+                    bookmarkname = ""; bookmarkpage = ""; bookmarkpagenumber = "";
+                    Dictionary<string, object> bookmarkdetails = new Dictionary<string, object>();
+                    if (bd.ContainsKey("Kids"))
+                    {
+                        //Deal with children
+                        IList<Dictionary<string, object>> bdkids = (IList<Dictionary<string, object>>)bd["Kids"];
+                        iterateBookmarks(ref bookmarklist, bdkids, level + 1);
+                    }
+                    bookmarkname = bd.Values.ToArray().GetValue(0).ToString();
+                    bookmarkpage = bd["Page"].ToString();
+                    bookmarkpagenumber = bookmarkpage.Substring(0, bookmarkpage.IndexOf(" "));
+                    bookmarkdetails.Add("Name", bookmarkname);
+                    bookmarkdetails.Add("Level", level);
+                    bookmarkdetails.Add("PDFPage", bookmarkpagenumber);
+                    //Check if this page exists already and add a level hyphen to it
+                    bookmarksDict.Add(bookmarkpagenumber, bookmarkdetails);
+                    bookmarklist = bookmarklist + " - " + bookmarkname;
                 }
-                bookmarkname = bd.Values.ToArray().GetValue(0).ToString();
-                bookmarkpage = bd["Page"].ToString();
-                bookmarkpagenumber = bookmarkpage.Substring(0, bookmarkpage.IndexOf(" "));
-                bookmarkdetails.Add("Name", bookmarkname);
-                bookmarkdetails.Add("Level", level);
-                bookmarkdetails.Add("PDFPage", bookmarkpagenumber);
-                bookmarksDict.Add(bookmarkpagenumber, bookmarkdetails);
-                bookmarklist = bookmarklist + " - " + bookmarkname;
             }
         }
 
@@ -386,14 +391,6 @@ namespace SplitPDF
             }
             thisSlide.Comments = new Dictionary<int, Comment>(newComments);
         }
-        //Can't do generic
-        private void IncrementCount(Dictionary<int, Comment> someDictionary, int id)
-        {
-            int currentCount;
-            
-
-        }
-
 
         private string getPageType(Slide thisSlide)
         {

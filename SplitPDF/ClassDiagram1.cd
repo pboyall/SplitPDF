@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="SplitPDF.DSAProject">
+    <Position X="9" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAiAAAQCwAEAAAQAAEAAAAAAAMAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>DSAProject.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SplitPDF.Presentation">
+    <Position X="9" Y="4.25" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAJAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAEBIA=</HashCode>
+      <FileName>DSAProject.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SplitPDF.ExcelExport">
+    <Position X="17" Y="1.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAEAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>ExcelExport.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SplitPDF.PDFExtractor">
+    <Position X="17" Y="3.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>QAAAAAAAAAAAAAQAwAAAAAAAAAAAAgAAEAAAAAAAAAA=</HashCode>
+      <FileName>PDFExtractor.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SplitPDF.PDFRenderer">
+    <Position X="15.25" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>QABCAEACAIAAAAAAAAgAgAAAAAgAAAAAAAABAAAAAAA=</HashCode>
+      <FileName>PDFRenderer.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SplitPDF.Program">
+    <Position X="17" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=</HashCode>
+      <FileName>Program.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SplitPDF.SiteMap">
+    <Position X="4" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAQA=</HashCode>
+      <FileName>SiteMap.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SplitPDF.Slide" BaseTypeListCollapsed="true">
+    <Position X="11.25" Y="0.5" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AASABAAAAgCAAEAAIAAAagIAAAEAIoAAgAACCAAAIJA=</HashCode>
+      <FileName>Slide.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="SplitPDF.Comment" BaseTypeListCollapsed="true">
+    <Position X="5.75" Y="2.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAACAAAAAAAAAAAIAAAAAAAAAAAAAAAACCAAAABA=</HashCode>
+      <FileName>Slide.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="SplitPDF.SlideNavigation" BaseTypeListCollapsed="true">
+    <Position X="5.75" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAEABAgIAAAAAAIAAACAAACAAgAAAAAAAAAAAABA=</HashCode>
+      <FileName>Slide.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="SplitPDF.SlideReference" BaseTypeListCollapsed="true">
+    <Position X="4" Y="6.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAACAAAABA=</HashCode>
+      <FileName>Slide.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="SplitPDF.splitPDF">
+    <Position X="2.25" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>CAAiIABiAIAEAQAQHAgAEAAgAADAAEAyAAIAQAwAqCA=</HashCode>
+      <FileName>SplitPDF.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

@@ -74,6 +74,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DSAProject.cs" />
     <Compile Include="ExcelExport.cs" />
     <Compile Include="PDFExtractor.cs" />
     <Compile Include="PDFRenderer.cs" />
@@ -85,6 +86,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="ClassDiagram1.cd" />
     <None Include="packages.config" />
     <None Include="Users.pdf" />
   </ItemGroup>

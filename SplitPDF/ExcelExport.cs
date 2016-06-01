@@ -15,7 +15,7 @@ namespace SplitPDF
     class ExcelExport
     {
 
-        public int thumbCol = 16;
+        public int thumbCol = 15;
         public int textCol = 6;
 
         public void ExportToExcel(string outputfile, string tabname, DataTable dt)
@@ -74,9 +74,13 @@ namespace SplitPDF
                 {
                     string filepath;
                     filepath = dt.Rows[i-1][thumbCol-1].ToString();
-                    SLPicture pic = new SLPicture(filepath);
-                    pic.SetPosition(i, thumbCol);
-                    sl.InsertPicture(pic);
+                    try
+                    {
+                        SLPicture pic = new SLPicture(filepath);
+                        pic.SetPosition(i, thumbCol);
+                        sl.InsertPicture(pic);
+                    }
+                    catch (Exception e) { Console.Write("No Thumbnails"); }
                 }
             }
             sl.SaveAs(outputfile);
