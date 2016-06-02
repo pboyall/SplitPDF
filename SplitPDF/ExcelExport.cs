@@ -15,6 +15,8 @@ namespace SplitPDF
     class ExcelExport
     {
 
+        string metedatatabname = "Presentation-Slide metadata";
+
         public int thumbCol = 15;
         public int textCol = 6;
 
@@ -82,6 +84,78 @@ namespace SplitPDF
                     }
                     catch (Exception e) { Console.Write("No Thumbnails"); }
                 }
+            }
+            sl.SaveAs(outputfile);
+            sl.Dispose();
+        }
+
+
+        public void ExportMetadata(DSAProject thisproject, DataTable dt)
+        {
+            SLDocument sl;
+            //PSA_HUM_PSA_UK_EN_Destination You_SUMMER16_LO (Core slides)
+            string outputfile = thisproject.Indication + "_" + thisproject.Product + "_" + thisproject.Segment + "_" + thisproject.Country + "_" + thisproject.Language + "_" + thisproject.Campaign + "_" + thisproject.Season + "_" + thisproject.Source + ".xlsx";
+
+            //Test if outputfile exists
+            if (File.Exists(outputfile)) { sl = new SLDocument(outputfile); } else { sl = new SLDocument(); }
+            string curSheet = sl.GetCurrentWorksheetName();
+            List<string> sheets = sl.GetWorksheetNames();
+            foreach (var sheet in sheets)
+            {
+                if (sheet.Equals(metedatatabname))
+                {
+                    sl.SelectWorksheet(metedatatabname);
+                }
+            }
+            curSheet = sl.GetCurrentWorksheetName();
+            if (curSheet.Equals(metedatatabname))
+            {
+                //Do nothing
+            }
+            else
+            {
+                sl.AddWorksheet(metedatatabname);
+            }
+            sl.DeleteWorksheet(SLDocument.DefaultFirstSheetName);
+
+
+
+
+
+
+
+
+            int iStartRowIndex = 35;
+            int iStartColumnIndex = 1;
+
+            sl.ImportDataTable(iStartRowIndex, iStartColumnIndex, dt, true);
+            SLStyle style = sl.CreateStyle();
+            style.SetWrapText(true);
+            //                style.FormatCode = "yyyy/mm/dd hh:mm:ss";
+            //                sl.SetColumnStyle(4, style);
+            int iEndRowIndex = iStartRowIndex + dt.Rows.Count + 1 - 1;
+            // - 1 because it's a counting thing, because the start column is counted.
+            int iEndColumnIndex = iStartColumnIndex + dt.Columns.Count - 1;
+            SLTable table = sl.CreateTable(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex);
+            table.SetTableStyle(SLTableStyleTypeValues.Medium17);
+            sl.InsertTable(table);
+            sl.SetRowHeight(iStartRowIndex + 1, iEndRowIndex, 110);
+            sl.SetColumnWidth(iStartColumnIndex, 20);
+            sl.SetColumnWidth(textCol, 30);
+            sl.SetColumnStyle(textCol, style);
+            sl.SetColumnWidth(thumbCol, 30);
+            //for each row read Thumbcol value and load data 
+            for (int i = iStartRowIndex; i < iEndRowIndex; i++)
+            {
+                string filepath;
+                filepath = dt.Rows[i - 1][thumbCol - 1].ToString();
+                try
+                {
+                    SLPicture pic = new SLPicture(filepath);
+                    pic.SetPosition(i, thumbCol);
+                    sl.InsertPicture(pic);
+                }
+                catch (Exception e) { Console.Write("No Thumbnails"); }
             }
             sl.SaveAs(outputfile);
             sl.Dispose();

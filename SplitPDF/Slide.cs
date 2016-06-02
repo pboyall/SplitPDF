@@ -39,7 +39,7 @@ namespace SplitPDF
         public string[] thisNav{ get; set; }            //Details of where in the Chapter/Section/SubSection hierarchy the page falls
         public Dictionary<int, Comment> Comments { get; set; }           //Annotation Comments       
         public string Thumbnail{ get; set; }            //Slide Thumbnail
-        public SortedDictionary<int, string> pdfPages{ get; set; }        //The pages which make up a slide
+        public SortedDictionary<float, string> pdfPages{ get; set; }        //The pages which make up a slide
         public string description{ get; set; }              //English Description of the slide
         public SlideNavigation navTable { get; set; }
         
@@ -51,7 +51,7 @@ namespace SplitPDF
         public string ProductMessageCategory { get; set; }              //To tie up with Metadata, should be an enum from somewhere
         public string ExternalID { get
             {
-                return "";
+                return presentation.PresentationID().ToString() +  "_" + PageReference;
             }
         }
 
@@ -68,7 +68,7 @@ namespace SplitPDF
         public Slide()
         {
             Comments = new Dictionary<int, Comment>();
-            pdfPages = new SortedDictionary<int, string>();
+            pdfPages = new SortedDictionary<float, string>();
             thisNav = new string[splitPDF.maxLevels];
             navTable = new SlideNavigation();
             Source = "LO"; //Always is for us
@@ -89,7 +89,7 @@ namespace SplitPDF
                 thisNav = this.thisNav,
                 Comments = new Dictionary<int, Comment>(Comments),
                 Thumbnail = this.Thumbnail,
-                pdfPages = new SortedDictionary<int, string>(this.pdfPages),
+                pdfPages = new SortedDictionary<float, string>(this.pdfPages),
                 description = this.description,
                 navTable = (SlideNavigation)this.navTable.Clone(),
                 Source = this.Source,

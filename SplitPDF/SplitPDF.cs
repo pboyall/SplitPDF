@@ -16,9 +16,10 @@ using ImageMagick;
 namespace SplitPDF
 {
 
-   public class splitPDF
+    public class splitPDF
     {
         internal static int maxLevels = 6;
+
         //Auto property for parameters to control the creation process
         public string ExcelFile { get; set; }
         public string TabName { get; set; }
@@ -26,20 +27,24 @@ namespace SplitPDF
         public string inputfile { get; set; }
         public string comparisonfile { get; set; }
 
-        internal PDFRenderer renderer { get; set; }
         public Boolean createPDFs { get; set; }         //set to true to create individual PDFs
         public Boolean createThumbs { get; set; }         //set to true to create thumbnails
         public Boolean consolidatePages { get; set; }         //set to true to consolidate "RunOn" PDFs
+
+        internal PDFRenderer renderer { get; set; }
+        internal DSAProject thisproject { get; set; }
+        internal Presentation thispresentation { get; set; }
 
         //Configuration values
         private string[] nvType = new string[3];             //TODO Magic numbers for now
         private string[] NavLevel = new string[maxLevels];
 
         //Manage the flow of data.  Remove the Datatables later.
-        private Dictionary<string, object> bookmarksDict;           //i.e. Chapters
+        private Dictionary<string, Dictionary<string, object>> bookmarksDict;           //i.e. Chapters //Was <string, object> before having to cater to levels and abusing dictionary
         private string[] currentNav = new string[maxLevels];
-        private DataTable metatable;
+        private DataTable metatable;            //28b metadata
         private  DataTable navtable;
+        private DataTable metadatatable;        //AbbVie metadata
         //Dictionary<string, string> metamapping = new Dictionary<string, string>();
 
         public splitPDF()
@@ -64,7 +69,7 @@ namespace SplitPDF
             string bookmarklist = "";
             PdfReader pdfReader = new PdfReader(filename);
             IList<Dictionary<string, object>> bookmarks = SimpleBookmark.GetBookmark(pdfReader);
-            bookmarksDict = new Dictionary<string, object>();
+            bookmarksDict = new Dictionary<string, Dictionary<string, object>>();//Was <string, object> before having to cater to levels and abusing dictionary
             //bookmarks will be null if no bookmarks found
             if (bookmarksDict != null)
             {
@@ -99,7 +104,7 @@ namespace SplitPDF
                     bookmarkdetails.Add("Level", level);
                     bookmarkdetails.Add("PDFPage", bookmarkpagenumber);
                     //Check if this page exists already and add a level hyphen to it
-                    bookmarksDict.Add(bookmarkpagenumber, bookmarkdetails);
+                    bookmarksDict.Add("Page" + bookmarkpagenumber + "-" +  level, bookmarkdetails);
                     bookmarklist = bookmarklist + " - " + bookmarkname;
                 }
             }
@@ -143,7 +148,24 @@ namespace SplitPDF
                 table.Columns.Add("Description", typeof(string));
                 table.Columns.Add("PDFPage", typeof(string));
             }
+            //For AbbVie metadata
+            if (tablename == "Metadata")
+            {
+                table.Columns.Add("ReferenceImage", typeof(string));
+                table.Columns.Add("SlideNumber", typeof(string));
+                table.Columns.Add("DisplayOrder", typeof(string));
+                table.Columns.Add("Source", typeof(string));
+                table.Columns.Add("KeyMessageName", typeof(string));
+                table.Columns.Add("Description", typeof(string));
+                table.Columns.Add("ProductMessageCategory", typeof(string));
+                table.Columns.Add("ExternalID", typeof(string));
+                table.Columns.Add("AdditionalNotes", typeof(string));
+            }
+
             return table;
+
+
+
         }
 
         private void createSplitPDF(int pagenumber, PdfReader reader)
@@ -190,19 +212,28 @@ namespace SplitPDF
             }
         }
 
-        private string ManageBookmarks(int pagenumber, ref Slide thisSlide)
+        private string ManageBookmarks(int pagenumber, ref Slide thisSlide, ref SortedDictionary<float, Slide> Slides, out int subpage)
         {
             int BookmarkLevel;
             string retval = "";
+            Slide prevSlide = (Slide)thisSlide.Clone();            //Store Transiently to cater for the new bookmark loop where we reset at the end of each subbookmark that exists on the same page
+            subpage = 0;
             if (String.IsNullOrEmpty(currentNav[0])) { currentNav[0] = "Entry"; }                        //Dummy Node to start things off
-                                                                              //Check to see Bookmark for this page unless it's a run on page in which case we ignore it
-            if (bookmarksDict.ContainsKey(pagenumber.ToString()))
+                                                                                                         //Check to see Bookmark for this page unless it's a run on page in which case we ignore it
+            Dictionary<string, Dictionary<string, object>> bookmarkdic = new Dictionary<string, Dictionary<string, object>>();
+            bookmarkdic = bookmarksDict.Where(d => d.Key.Contains("Page" + pagenumber.ToString() + "-")).ToDictionary(d => d.Key, d => d.Value);
+            int numpages = bookmarkdic.Count;
+            int loopcounter = 1;
+            if (numpages > 0)
+            //            if (bookmarksDict.ContainsKey(pagenumber.ToString()))
             {
-                object wibble;
+                //object wibble;
                 //Don't forget arrays start at 0, level count starts at 1
-                if (bookmarksDict.TryGetValue(pagenumber.ToString(), out wibble))
+                //if (bookmarksDict.TryGetValue("Page" + pagenumber.ToString(), out wibble))
+                foreach(var wibble in bookmarkdic)
                 {
-                    Dictionary<string, object> wibble1 = (Dictionary<string, object>)wibble;
+                    Dictionary<string, object> wibble1 = wibble.Value;
+                    //Dictionary<string, object> wibble1 = (Dictionary<string, object>)wibble;
                     thisSlide.PageReference = wibble1["Name"].ToString();
                     BookmarkLevel = int.Parse(wibble1["Level"].ToString());
                     thisSlide.navTable.PDFPageNo = wibble1["PDFPage"].ToString();
@@ -228,6 +259,20 @@ namespace SplitPDF
                     {
                         currentNav[i] = thisSlide.thisNav[i];//Copy over for next loop
                     }
+                    //Moved from outside loop to cater for multi-bookmark pages.  Only do this if there are more bookmarks than pages (i.e. 3 bookmarks on 1 page.  1 bookmark on this page doesn't trigger the if statement as 1 =1 so the Slides.Add is done outside.  Messy.
+                    if (loopcounter < numpages)
+                    { 
+                        //if (loopcounter == 1){
+                            thisSlide.PageOrder = pagenumber;                           //Just using pageNumber
+                            thisSlide.pdfPages.Add(pagenumber, "Only Page");
+                        //}
+                        Slides.Add(pagenumber + ((float)loopcounter / 10), thisSlide);
+                        //Reset
+                        thisSlide = null;
+                        thisSlide = (Slide)prevSlide.Clone();
+                        loopcounter++;
+                    }
+                    subpage = loopcounter;//    Passing this out means that the final page gets numbered as the top page (e.g. 1.1. and 1.2 are done here and 1.3 is done outside, otherwise the outside page would have been numbered just "1")
                     retval = "New";
                 }
             }
@@ -262,6 +307,7 @@ namespace SplitPDF
             #region SetupTable
             metatable = createDataTable("DSA", new Dictionary<string, string>());
             navtable = createDataTable("DSANav", new Dictionary<string, string>());
+            metadatatable = createDataTable("Metadata", new Dictionary<string, string>());
             #endregion
             using (PdfReader reader = new PdfReader(inputfile))
             {
@@ -270,12 +316,13 @@ namespace SplitPDF
                                                                                //Iterate around the PDF, keep these outside loop so they propogate downwards
                 Slide thisSlide = new Slide();
                 Slide oldSlide = new Slide();
-                SortedDictionary<int, Slide> Slides = new SortedDictionary<int, Slide>();   //Collection of all the Slides found in this presentation
+                SortedDictionary<float, Slide> Slides = new SortedDictionary<float, Slide>();   //Collection of all the Slides found in this presentation
 
                 for (int pagenumber = 1; pagenumber <= reader.NumberOfPages; pagenumber++)
                 {
                     string bookmarkreturn = "";
                     string thumbname = System.IO.Path.Combine(outputfile, "Thumb" + System.IO.Path.GetFileNameWithoutExtension(inputfile) + "-p" + pagenumber + ".png");
+                    int subpage;            //Caters for pages with more than one bookmark
                     createSplitPDF(pagenumber, reader);
                     thisSlide = new Slide();
                     thisSlide.PageNumber = pagenumber;
@@ -288,17 +335,18 @@ namespace SplitPDF
 
                     #region CheckBookmarks
                     BookMarkList(inputfile);//Populates the dictionary, no return
-                    bookmarkreturn = ManageBookmarks(pagenumber, ref thisSlide);       //Adds all the Nav + PageReference + PageLevel
+                    bookmarkreturn = ManageBookmarks(pagenumber, ref thisSlide, ref Slides, out subpage);       //Adds all the Nav + PageReference + PageLevel
                     
                     if (bookmarkreturn != "New") {
                         copyOldValues(ref thisSlide, oldSlide);//Recover the old values
                         thisSlide.pdfPages.Add(pagenumber, "Non Bookmarked Page, presumed to be a run on");
                         thisSlide.PageType += "Multiple";
                         if (consolidatePages) Slides.Remove(pagenumber - 1); else thisSlide.navTable.NavWeight = 0;
-                    }else
+                    }
+                    else
                     {
                         thisSlide.PageOrder = pagenumber;                           //Just using pageNumber
-                        thisSlide.pdfPages.Add(pagenumber, "Start Page");
+                        thisSlide.pdfPages.Add(pagenumber , "Start Page");
                     }
                     #endregion
                     //Add to Slides Collection
@@ -327,6 +375,7 @@ namespace SplitPDF
 
                     metatable.Rows.Add(theSlide.PageReference, theSlide.PageNumber, pdfPages, theSlide.Title, theSlide.Text, theSlide.PageType, theSlide.thisNav[0], theSlide.thisNav[1], theSlide.thisNav[2], theSlide.thisNav[3], theSlide.thisNav[4], theSlide.thisNav[5], pageComments, pageOwner, theSlide.Thumbnail);
                     if (theSlide.navTable.NavWeight != 0) { navtable.Rows.Add(theSlide.navTable.Source, theSlide.navTable.Target, theSlide.navTable.NavWeight, theSlide.navTable.NavigationType, theSlide.Thumbnail, "", theSlide.navTable.NavDesc, theSlide.navTable.PDFPageNo); }
+                    metadatatable.Rows.Add(theSlide.Thumbnail, theSlide.PageNumber, theSlide.PageOrder, theSlide.Source, theSlide.PageReference, theSlide.description, theSlide.ProductMessageCategory, theSlide.Comments );
                 }
                 return pageCount;
             }
@@ -368,7 +417,7 @@ namespace SplitPDF
             //PageType is set outside here
             //Set the "olds" (redo as function) - .net does arrays by reference so if you just do thisNav = oldNav then you only every have one nav array!
             oldSlide.thisNav.CopyTo(thisSlide.thisNav, 0);
-            thisSlide.pdfPages = new SortedDictionary<int, string>(oldSlide.pdfPages);         
+            thisSlide.pdfPages = new SortedDictionary<float, string>(oldSlide.pdfPages);         
             //Description has no value set currently - was to get a column for humans to write to in the spreadsheet
             thisSlide.navTable = (SlideNavigation)oldSlide.navTable.Clone();         
             //Navlinks not used yet
@@ -489,7 +538,19 @@ namespace SplitPDF
             if (String.IsNullOrWhiteSpace(Tabname)) { Tabname = "Tab " + DateTime.Now.ToShortDateString().Replace('/', '-'); }
             ee.ExportToExcel(excelfile, Tabname, table);
         }
+        internal void ExportMetadata()
+        {
+            ExcelExport ee = new ExcelExport();
+            ee.ExportMetadata(thisproject, metatable);
+            
+        }
     }
+
+    
+}
+
+
+
 }
 
 
