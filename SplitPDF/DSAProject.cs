@@ -37,11 +37,17 @@ namespace SplitPDF
         public DSAProject project;
         public string PresentationID()
         {
-            return project.Indication + project.Product + project.Segment + project.Country + Hidden + project.Campaign + project.Season + project.Source + PresentationIndex;
+            return project.Indication + "_" + project.Product + "_" + project.Segment + "_" + project.Country + "_" + Hidden + "_" + project.Campaign + "_" + project.Season + "_" + project.Source + "_" + PresentationIndex;
         }
 
+        public string ExternalPresentationName()
+        {
+            return project.Indication + " " +  project.Season;
+        }
+        //Used By Slides
+        public string PresentationPrefix()
+        {
+            return project.Indication + "_" + project.Product + "_" + project.Segment + "_" + project.Country + "_" + project.Language;
+        }
     }
-
-
-
 }

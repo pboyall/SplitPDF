@@ -28,6 +28,8 @@ namespace SplitPDF
         //Visible Name - Page Reference
         //Concatengy Key Message Name - ExternalID
 
+
+
         internal int SlideRef { get; set; }             //Unique ID so we can track slides across PDF versions
         public string PageReference { get; set; }       //English Reference from Bookmark
         public int PageLevel { get; set; }              //Bookmark Level
@@ -51,7 +53,7 @@ namespace SplitPDF
         public string ProductMessageCategory { get; set; }              //To tie up with Metadata, should be an enum from somewhere
         public string ExternalID { get
             {
-                return presentation.PresentationID().ToString() +  "_" + PageReference;
+                return presentation.PresentationPrefix().ToString() +  "_" + PageReference + "_" + Source;
             }
         }
 

@@ -45,7 +45,8 @@ namespace SplitPDF
             rasterizer.Open(inputfile, vesion, false);
             string pageFilePath = imagefile;
             System.Drawing.Image img = rasterizer.GetPage(this.exportDPI, this.exportDPI, pagenumber);
-            img.Save(pageFilePath, ImageFormat.Png);
+            //img.Save(pageFilePath, ImageFormat.Png);
+            //File.Delete(pageFilePath);
             rasterizer.Close();
             img.Save(thumbFilePath, ImageFormat.Png);
             resizeImage(thumbFilePath);

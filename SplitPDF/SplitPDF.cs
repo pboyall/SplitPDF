@@ -12,6 +12,8 @@ using iTextSharp.text.pdf.parser;
 using System.Xml.Linq;
 using System.Globalization;
 using ImageMagick;
+using System.Web;
+using System.Xml;
 
 namespace SplitPDF
 {
@@ -30,6 +32,9 @@ namespace SplitPDF
         public Boolean createPDFs { get; set; }         //set to true to create individual PDFs
         public Boolean createThumbs { get; set; }         //set to true to create thumbnails
         public Boolean consolidatePages { get; set; }         //set to true to consolidate "RunOn" PDFs
+        public Boolean exportMeta { get; set; }         //set to true to dump metadata sheets out
+        public Boolean extractText { get; set; }         //set to true to pull text from PDF
+        public Boolean exportNav { get; set; }         //set to true to do nav
 
         internal PDFRenderer renderer { get; set; }
         internal DSAProject thisproject { get; set; }
@@ -98,14 +103,20 @@ namespace SplitPDF
                         iterateBookmarks(ref bookmarklist, bdkids, level + 1);
                     }
                     bookmarkname = bd.Values.ToArray().GetValue(0).ToString();
-                    bookmarkpage = bd["Page"].ToString();
-                    bookmarkpagenumber = bookmarkpage.Substring(0, bookmarkpage.IndexOf(" "));
-                    bookmarkdetails.Add("Name", bookmarkname);
-                    bookmarkdetails.Add("Level", level);
-                    bookmarkdetails.Add("PDFPage", bookmarkpagenumber);
-                    //Check if this page exists already and add a level hyphen to it
-                    bookmarksDict.Add("Page" + bookmarkpagenumber + "-" +  level, bookmarkdetails);
-                    bookmarklist = bookmarklist + " - " + bookmarkname;
+                    try
+                    {
+                        bookmarkpage = bd["Page"].ToString();
+                        bookmarkpagenumber = bookmarkpage.Substring(0, bookmarkpage.IndexOf(" "));
+                        bookmarkdetails.Add("Name", bookmarkname);
+                        bookmarkdetails.Add("Level", level);
+                        bookmarkdetails.Add("PDFPage", bookmarkpagenumber);
+                        //Check if this page exists already and add a level hyphen to it
+                        bookmarksDict.Add("Page" + bookmarkpagenumber + "-" + level, bookmarkdetails);
+                        bookmarklist = bookmarklist + " - " + bookmarkname;
+                    }
+                    catch {
+                        //Don't add bookmarks which lack a page number
+                    }
                 }
             }
         }
@@ -133,6 +144,10 @@ namespace SplitPDF
                 table.Columns.Add("Comments", typeof(string));
                 table.Columns.Add("Owner", typeof(string));
                 table.Columns.Add("Thumbnail", typeof(string));
+                table.Columns.Add("ParentID", typeof(string));
+                table.Columns.Add("ID", typeof(string));
+                table.Columns.Add("Summary", typeof(string));
+
                 //table.Columns.Add("Thumbnail", typeof(System.Drawing.Image));
 
             }
@@ -196,17 +211,22 @@ namespace SplitPDF
                     if (PdfName.TEXT.Equals(subType) || PdfName.HIGHLIGHT.Equals(subType) || PdfName.INK.Equals(subType) || PdfName.FREETEXT.Equals(subType))
                     {
                         PdfString title = annotation.GetAsString(PdfName.T);            //Seems to store author
-                        PdfString contents = annotation.GetAsString(PdfName.CONTENTS);  //Visible Text
+                        //PdfString contents = annotation.GetAsString(PdfName.CONTENTS);   //Visible Text
+                        //string newcontents = annotation.GetAsString(PdfName.CONTENTS).ToString();   //Visible Text
+                        string commentext = annotation.GetAsString(PdfName.CONTENTS).ToUnicodeString();   //Visible Text
+                        commentext = System.Security.SecurityElement.Escape(commentext);
                         //pageComments = pageComments + contents.ToString() + "\r\n";
                         //pgOwner = pgOwner + title.ToString() + "\r\n";
-
                         Comment thisComment = new Comment();
                         thisComment.CommentDate = DateTime.Now;         //Not technically correct, but will suffice
                         thisComment.pagenumber = pagenumber;
-                        thisComment.Owner = title.ToString();
-                        thisComment.Text = contents.ToString();
+                        thisComment.Owner = title?.ToString() ?? "";
+                        thisComment.Text = commentext;
                         thisSlide.Comments.Add(commentCounter, thisComment);
                         commentCounter++;
+
+                        //Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes
+
                     }
                 }
             }
@@ -286,16 +306,24 @@ namespace SplitPDF
 
         private void ExtractText(int pagenumber, PdfReader reader, ref Slide thisSlide)
         {
-            Rectangle mediabox = reader.GetPageSize(pagenumber);
-            //Extract Text from the page.  Have to reinitialise Text Extraction Strategy each time as otherwise you end up with all the text from the PDf - weird
-            PDFExtractor pdfExtract = new PDFExtractor();
-
             var pdfText = "";
-            pdfText = PdfTextExtractor.GetTextFromPage(reader, pagenumber, pdfExtract.bodystrategy);
-            thisSlide.Text = Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes(pdfText)));
-            //Extract title text from page (some duplicated code here, leave it for now)  Note that all these declarations need stuff only known inside the loop
-            pdfText = PdfTextExtractor.GetTextFromPage(reader, pagenumber, pdfExtract.titlestrategy);
-            thisSlide.Title = Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes(pdfText)));
+            if (extractText)
+            {
+                Rectangle mediabox = reader.GetPageSize(pagenumber);
+                //Extract Text from the page.  Have to reinitialise Text Extraction Strategy each time as otherwise you end up with all the text from the PDf - weird
+                PDFExtractor pdfExtract = new PDFExtractor();
+
+                
+                pdfText = PdfTextExtractor.GetTextFromPage(reader, pagenumber, pdfExtract.bodystrategy);
+                thisSlide.Text = Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes(pdfText)));
+                //Extract title text from page (some duplicated code here, leave it for now)  Note that all these declarations need stuff only known inside the loop
+                pdfText = PdfTextExtractor.GetTextFromPage(reader, pagenumber, pdfExtract.titlestrategy);
+                thisSlide.Title = Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes(pdfText)));
+            }else
+            {
+                thisSlide.Title = "";
+                thisSlide.Text = "";
+            }
         }
 
         //Chop the input PDF into separate pages
@@ -304,6 +332,7 @@ namespace SplitPDF
             int pageCount;
             renderer.outputfile = outputfile;
             renderer.inputfile = inputfile;
+            thispresentation.project = thisproject;
             #region SetupTable
             metatable = createDataTable("DSA", new Dictionary<string, string>());
             navtable = createDataTable("DSANav", new Dictionary<string, string>());
@@ -314,8 +343,9 @@ namespace SplitPDF
                 pageCount = reader.NumberOfPages;
                 try { TabName = reader.Info["Title"]; } catch (Exception e) { }//Just consume an error, seems hit and miss whether the PDF gives back a title or not
                                                                                //Iterate around the PDF, keep these outside loop so they propogate downwards
-                Slide thisSlide = new Slide();
+                Slide thisSlide;
                 Slide oldSlide = new Slide();
+                string id = "", parentid = "";
                 SortedDictionary<float, Slide> Slides = new SortedDictionary<float, Slide>();   //Collection of all the Slides found in this presentation
 
                 for (int pagenumber = 1; pagenumber <= reader.NumberOfPages; pagenumber++)
@@ -325,6 +355,7 @@ namespace SplitPDF
                     int subpage;            //Caters for pages with more than one bookmark
                     createSplitPDF(pagenumber, reader);
                     thisSlide = new Slide();
+                    thisSlide.presentation = thispresentation;
                     thisSlide.PageNumber = pagenumber;
                     ExtractText(pagenumber, reader, ref thisSlide);
                     //Can do a comparison here but not really necessary as checking for bookmarks instead if (thisSlide.Text == oldSlide.Text)
@@ -358,7 +389,7 @@ namespace SplitPDF
                 }
                 thisSlide = null;
                 bookmarksDict = null;
-
+                int SlideCounter = 1;       //Required for JIRA Import to Generate ID columns
                 //Add to datatables, don't add empty rows (where a slides runs across multiple PDF pages) to NavTable
                 foreach(var SlideDict in Slides.OrderBy(ts=>ts.Key)) {
                     Slide theSlide = SlideDict.Value;
@@ -372,13 +403,56 @@ namespace SplitPDF
                         commentCounter++;
                     }
                     string pdfPages = theSlide.pdfPages.Keys.Min().ToString() + "-" + theSlide.pdfPages.Keys.Max().ToString();
+                    if (theSlide.navTable.NavWeight < 100)
+                    {
+                        parentid = id;
+                        id = null;
+                    }
+                    else { }
+                    id = SlideCounter.ToString();
 
-                    metatable.Rows.Add(theSlide.PageReference, theSlide.PageNumber, pdfPages, theSlide.Title, theSlide.Text, theSlide.PageType, theSlide.thisNav[0], theSlide.thisNav[1], theSlide.thisNav[2], theSlide.thisNav[3], theSlide.thisNav[4], theSlide.thisNav[5], pageComments, pageOwner, theSlide.Thumbnail);
+                    //EncodeStrings(ref theSlide);
+                    //pageComments = EncodeString(pageComments);
+
+                    metatable.Rows.Add(theSlide.PageReference, theSlide.PageNumber, pdfPages, 
+                        theSlide.Title,theSlide.Text, 
+                        theSlide.PageType, theSlide.thisNav[0], theSlide.thisNav[1], theSlide.thisNav[2], theSlide.thisNav[3], theSlide.thisNav[4], 
+                        theSlide.thisNav[5],
+                        pageComments, pageOwner, theSlide.Thumbnail, id, parentid, theSlide.PageReference + pdfPages);
+
                     if (theSlide.navTable.NavWeight != 0) { navtable.Rows.Add(theSlide.navTable.Source, theSlide.navTable.Target, theSlide.navTable.NavWeight, theSlide.navTable.NavigationType, theSlide.Thumbnail, "", theSlide.navTable.NavDesc, theSlide.navTable.PDFPageNo); }
-                    metadatatable.Rows.Add(theSlide.Thumbnail, theSlide.PageNumber, theSlide.PageOrder, theSlide.Source, theSlide.PageReference, theSlide.description, theSlide.ProductMessageCategory, theSlide.Comments );
+                    metadatatable.Rows.Add(theSlide.Thumbnail, theSlide.PageNumber, theSlide.PageOrder, theSlide.Source, theSlide.PageReference, theSlide.description, theSlide.ProductMessageCategory, theSlide.ExternalID, theSlide.Comments );
+
+                    SlideCounter++;
                 }
                 return pageCount;
             }
+        }
+
+
+        private string EncodeString(string theString)
+        {
+            //return theString = new System.Xml.Linq.XText(theString).ToString();
+
+            return XmlConvert.EncodeName(theString);
+            // HttpUtility.HtmlEncode(xml);
+
+        }
+
+        private string EncodeStringXML(string theString)
+        {
+            XmlDocument doc = new XmlDocument();
+            XmlNode node = doc.CreateElement("root");
+            node.InnerText = theString;
+            return node.InnerXml;
+        }
+
+        private void EncodeStrings(ref Slide theSlide)
+        {
+            theSlide.Title = Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes(theSlide.Title)));
+            theSlide.Text = Encoding.UTF8.GetString(Encoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes(theSlide.Text)));
+            theSlide.Title = EncodeString(theSlide.Title);
+            theSlide.Text = EncodeString(theSlide.Text);
         }
 
         private static System.Drawing.Image GetImageFromFile(string fileName)
@@ -536,13 +610,20 @@ namespace SplitPDF
             ExcelExport ee = new ExcelExport();
             //if (String.IsNullOrWhiteSpace(ExcelFile) == true) { ExcelFile = "./" + Guid.NewGuid().ToString() + ".xlsx"; }
             if (String.IsNullOrWhiteSpace(Tabname)) { Tabname = "Tab " + DateTime.Now.ToShortDateString().Replace('/', '-'); }
-            ee.ExportToExcel(excelfile, Tabname, table);
-        }
+            if (type.ToUpper() == "NAV" && !exportNav ){
+                    //Do nothing
+                }
+                else{ 
+                ee.ExportToExcel(excelfile, Tabname, table);
+                }
+            }
         internal void ExportMetadata()
         {
-            ExcelExport ee = new ExcelExport();
-            ee.ExportMetadata(thisproject, metatable);
-            
+            if (exportMeta)
+            {
+                ExcelExport ee = new ExcelExport();
+                ee.ExportMetadata(thisproject, metatable);
+            }
         }
     }
 
@@ -551,7 +632,7 @@ namespace SplitPDF
 
 
 
-}
+
 
 
 

@@ -19,11 +19,13 @@ namespace SplitPDF
     class Program
     {
 
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
 
             string sourcedirectory = "";
             string targetdirectory = "";
+            string comparisonfile = "";
+            string[] systemvalues;
             int loopcounter = 1;
 
             //Test harness
@@ -34,20 +36,24 @@ namespace SplitPDF
 
             if ((args.Length) > 0) { sourcedirectory = args[0]; }
             if ((args.Length) > 1) { targetdirectory = args[1]; }
+            if ((args.Length) > 2) { comparisonfile = args[2]; }
 
             if (sourcedirectory == "") { sourcedirectory = mydirectory; }
             if (targetdirectory == "") { targetdirectory= mydirectory + "\\Output"; }
-            splitter.comparisonfile = mydirectory + "\\Output\\2244bb38-5e6b-450a-80dd-c490ec6344b0.xlsx";     //Just testing
+            if (comparisonfile == "") { comparisonfile = mydirectory + "\\2244bb38-5e6b-450a-80dd-c490ec6344b0.xlsx"; }
 
-            //splitter.inputfile = mydirectory + "\\BookmarkTesting.pdf";
-            //
-            //15863 Uveitis Detail Aid_Impact and TNF alpha_03 BOOKMARKED
-            //15863 Uveitis Detail Aid_Impact and TNF alpha_03 BOOKMARKED
-            //"15863 Uveitis Detail Aid_Visual 1_02 BOOKMARKED";
+            splitter.comparisonfile = comparisonfile;     //Just testing
 
             DSAProject Proj = new DSAProject();
 
-            string[] systemvalues = System.IO.File.ReadAllLines(sourcedirectory + "\\Project.txt");
+            try
+            {
+                systemvalues = System.IO.File.ReadAllLines(sourcedirectory + "\\Project.txt");
+            }catch(Exception e)
+            {
+                //Console.log?
+                return (1);
+            }
             foreach(string line in systemvalues)
             {
                 int equalspos = line.IndexOf(":");
@@ -59,26 +65,17 @@ namespace SplitPDF
             }
 
             //Presentation Builder
-/*            
-            Proj.Product = "HUMIRA";
-            Proj.Indication = "Uveitis";
-            Proj.Segment = "Uveitis";
-            Proj.Country = "UK";
-            Proj.Language = "EN";
-            Proj.Source = "Uveitis";
-            Proj.Campaign = "YOU";
-            Proj.Season = "SUMMER 16";
-            Proj.Audience = "REP";
-            Proj.Notes = "Test Project";
-*/
-
+            //TODO : Update to read from config
             splitter.renderer.exportDPI = 150;
             splitter.renderer.thumbnailheight = 150;
             splitter.renderer.thumbnailwidth = 200;
             splitter.createPDFs = false;
-            splitter.createThumbs = true;
-            splitter.consolidatePages = true;
+            splitter.createThumbs = false;
+            splitter.consolidatePages = false;
+            splitter.extractText = false;
+            splitter.exportNav = false;
             splitter.outputfile = targetdirectory;
+            splitter.thisproject = Proj;
             //For each PDF in source directory, run the routine
             string[] dirs = Directory.GetFiles(sourcedirectory, "*.pdf");
             foreach (string dir in dirs)
@@ -93,18 +90,22 @@ namespace SplitPDF
                 Proj.Presentations.Add(thisPres.PresentationIndex.ToString(), thisPres);
                 loopcounter++;
                 //Execute code
+                splitter.thispresentation = thisPres;
+                
                 int returned = splitter.Split();
                 string excelfile = splitter.outputfile + "\\" + thisPres.PresentationName + ".xlsx";
                 splitter.ExportToExcel(excelfile, "Meta", "Meta");     //No tabname for now - that would be if updating.  Later Guid.NewGuid().ToString() 
-                splitter.ExportToExcel(excelfile, "Nav", "Nav");     //No tabname for now - that would be if updating.  Later
+                //splitter.ExportToExcel(excelfile, "Nav", "Nav");     //No tabname for now - that would be if updating.  Later
 
                 //Metadata Export
                 splitter.ExportMetadata();
+
             }
             //Updates to Site Map can be called from here 
             /*
             splitter.readSiteMap();
             */
+            return 0;
         }
 
         static void setInstanceProperty<PROPERTY_TYPE>(object instance, string propertyName, PROPERTY_TYPE value)
