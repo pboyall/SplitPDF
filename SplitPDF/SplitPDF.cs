@@ -14,13 +14,23 @@ using System.Globalization;
 using ImageMagick;
 using System.Web;
 using System.Xml;
+using System.Reflection;
 
 namespace SplitPDF
 {
 
+    public enum gitlabupload
+    {
+        New,
+        Update,
+        False
+    };
+
     public class splitPDF
     {
         internal static int maxLevels = 6;
+
+
 
         //Auto property for parameters to control the creation process
         public string ExcelFile { get; set; }
@@ -35,8 +45,10 @@ namespace SplitPDF
         public Boolean exportMeta { get; set; }         //set to true to dump metadata sheets out
         public Boolean extractText { get; set; }         //set to true to pull text from PDF
         public Boolean exportNav { get; set; }         //set to true to do nav
+        public gitlabupload exportGit{ get; set; }         //set to New to upload new issues into gitlab, update to only update, no to not connect to gitlab
 
-        internal PDFRenderer renderer { get; set; }
+
+        public PDFRenderer renderer { get; set; }
         internal DSAProject thisproject { get; set; }
         internal Presentation thispresentation { get; set; }
 
@@ -65,7 +77,32 @@ namespace SplitPDF
             NavLevel[4] = "Sub3Child";
             NavLevel[5] = "Sub4Child";
             renderer = new PDFRenderer();
+            exportGit = gitlabupload.False;
         }
+
+        public void newProject()
+        {
+            thisproject = new DSAProject();
+            //return thisproject;
+        }
+
+        public void newPresentation(int loopcounter, string directory)
+        {
+            thispresentation = new Presentation();
+            thispresentation.Hidden = "N";          //Magic
+            thispresentation.project = thisproject;
+            thispresentation.PresentationIndex = loopcounter;
+            thispresentation.PresentationName = directory;
+            thisproject.Presentations.Add(thispresentation.PresentationIndex.ToString(), thispresentation);
+            //return thispresentation;
+        }
+
+        public void setProjectProperty(string key, string value)
+        {
+            setInstanceProperty<string>(thisproject, key, value);
+        }
+
+
 
         //Get bookmarks, return number of bookmarks
         public int BookMarkList(string filename)
@@ -213,7 +250,8 @@ namespace SplitPDF
                         PdfString title = annotation.GetAsString(PdfName.T);            //Seems to store author
                         //PdfString contents = annotation.GetAsString(PdfName.CONTENTS);   //Visible Text
                         //string newcontents = annotation.GetAsString(PdfName.CONTENTS).ToString();   //Visible Text
-                        string commentext = annotation.GetAsString(PdfName.CONTENTS).ToUnicodeString();   //Visible Text
+                        var comment = annotation.GetAsString(PdfName.CONTENTS) ?? new PdfString("") ;
+                        string commentext = comment.ToUnicodeString();   //Visible Text
                         commentext = System.Security.SecurityElement.Escape(commentext);
                         //pageComments = pageComments + contents.ToString() + "\r\n";
                         //pgOwner = pgOwner + title.ToString() + "\r\n";
@@ -378,6 +416,7 @@ namespace SplitPDF
                     {
                         thisSlide.PageOrder = pagenumber;                           //Just using pageNumber
                         thisSlide.pdfPages.Add(pagenumber , "Start Page");
+                        //renderer.GenerateThumbnail(pagenumber, System.IO.Path.Combine(outputfile, thisSlide.PageReference + ".png"));
                     }
                     #endregion
                     //Add to Slides Collection
@@ -595,7 +634,8 @@ namespace SplitPDF
 
         #endregion
 
-        internal void ExportToExcel(string excelfile, string Tabname, string type)
+        
+        public void ExportToExcel(string excelfile, string Tabname, string type)
         {
             DataTable table;
             //Name Tab by Date? By definition right now this will always be a new file
@@ -613,18 +653,41 @@ namespace SplitPDF
             if (type.ToUpper() == "NAV" && !exportNav ){
                     //Do nothing
                 }
-                else{ 
-                ee.ExportToExcel(excelfile, Tabname, table);
-                }
+                else{
+                try
+                    {
+                        ee.ExportToExcel(excelfile, Tabname, table);
+                    }
+                    catch (Exception e)
+                    {
+                        ///Issue with Spreadsheet Light and OPenxML
+                    }
+
             }
-        internal void ExportMetadata()
+        }
+        public void ExportMetadata()
         {
             if (exportMeta)
             {
+                try {
                 ExcelExport ee = new ExcelExport();
                 ee.ExportMetadata(thisproject, metatable);
+                }catch(Exception e)
+                {
+                    ///Issue with Spreadsheet Light and OPenxML
+                }
             }
         }
+
+        public static void setInstanceProperty<PROPERTY_TYPE>(object instance, string propertyName, PROPERTY_TYPE value)
+        {
+            Type type = instance.GetType();
+            PropertyInfo propertyInfo = type.GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public, null, typeof(PROPERTY_TYPE), new Type[0], null);
+            propertyInfo.SetValue(instance, value, null);
+
+            return;
+        }
+
     }
 
     

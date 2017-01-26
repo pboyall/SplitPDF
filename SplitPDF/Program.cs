@@ -70,8 +70,8 @@ namespace SplitPDF
             splitter.renderer.thumbnailheight = 150;
             splitter.renderer.thumbnailwidth = 200;
             splitter.createPDFs = false;
-            splitter.createThumbs = false;
-            splitter.consolidatePages = false;
+            splitter.createThumbs = true;
+            splitter.consolidatePages = true;
             splitter.extractText = false;
             splitter.exportNav = false;
             splitter.outputfile = targetdirectory;
