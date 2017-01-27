@@ -24,8 +24,10 @@ namespace SplitPDFUI
         private string PDFFolderPath;
         private string outputFolderPath;
         private string mydirectory = "";
+        private string project = "";
+
+//Gitlab Settings
         private string gitlabserver = "http://gitlab.internal.28b.co.uk/api/v3/projects/";
-        private string project = "3";
         private string issuespath = "issues";
         private string uploadpath = "uploads";
         int markdownhashlength = 11;
@@ -51,24 +53,21 @@ namespace SplitPDFUI
 
         private void btnGenerate_Click(object sender, EventArgs e)
         {
-
-            string sourcedirectory = "";
-            string targetdirectory = "";
+            //string sourcedirectory = "";
+            //string targetdirectory = "";
             string comparisonfile = "";
             string[] systemvalues;
             int loopcounter = 1;
             splitPDF splitter = new splitPDF();
 
-            if (sourcedirectory == "") { sourcedirectory = mydirectory; }
-            if (targetdirectory == "") { targetdirectory = mydirectory + "\\Output"; }
-            if (comparisonfile == "") { comparisonfile = mydirectory + "\\2244bb38-5e6b-450a-80dd-c490ec6344b0.xlsx"; }
+            if (comparisonfile == "") { comparisonfile = mydirectory + "\\2244bb38-5e6b-450a-80dd-c490ec6344b0.xlsx"; }//Just testing
+            splitter.comparisonfile = comparisonfile;
 
             splitter.newProject();
-
-            splitter.comparisonfile = comparisonfile;     //Just testing
+            
             try
             {
-                systemvalues = System.IO.File.ReadAllLines(sourcedirectory + "\\Project.txt");
+                systemvalues = System.IO.File.ReadAllLines(PDFFolderPath + "\\Project.txt");
                 foreach (string line in systemvalues)
                 {
                     int equalspos = line.IndexOf(":");
@@ -95,12 +94,15 @@ namespace SplitPDFUI
             splitter.consolidatePages = chkConsolidate.Checked;
             splitter.extractText = chkText.Checked;
             splitter.exportNav = chkNav.Checked;
-
-            splitter.outputfile = targetdirectory;
+            SplitPDF.gitlabupload exportGitStatus;
+            Enum.TryParse<SplitPDF.gitlabupload>(cmbGit.SelectedValue.ToString(), out exportGitStatus);
+            splitter.exportGit = exportGitStatus;
+            
+            splitter.outputfile = outputFolderPath;
             splitter.newProject();
 
             //For each PDF in source directory, run the routine
-            string[] dirs = Directory.GetFiles(sourcedirectory, "*.pdf");
+            string[] dirs = Directory.GetFiles(PDFFolderPath, "*.pdf");
             foreach (string dir in dirs)
             {
                 splitter.inputfile = dir;
@@ -114,6 +116,10 @@ namespace SplitPDFUI
                 //splitter.ExportToExcel(excelfile, "Nav", "Nav");     //No tabname for now - that would be if updating.  Later
                 //Metadata Export
                 splitter.ExportMetadata();
+                if (splitter.exportGit == SplitPDF.gitlabupload.New){
+                    splitter.ExportToGit(project);
+                }
+
             }
 
 
@@ -122,16 +128,20 @@ namespace SplitPDFUI
         private void cmdDefault_Click(object sender, EventArgs e)
         {
             txtPDFFolder.Text = "G:\\PDFSplitting\\";
+            txtOutputFolder.Text = "G:\\PDFSplitting\\Output";
+            txtProject.Text = "48";
         }
 
         private void txtPDFFolder_TextChanged(object sender, EventArgs e)
         {
             PDFFolderPath = txtPDFFolder.Text;
-            lblFolder.Text = txtPDFFolder.Text;
         }
 
         private void btnCurlTests_Click(object sender, EventArgs e)
         {
+
+            //iterator
+
             string image = @"g:\Code\screens\SPA_HUM_AxialSPA_UK_EN_AbbVie care experience_LO.png";
             string title = Path.GetFileName(image);
             string description = title + "Test Description";
@@ -173,6 +183,31 @@ namespace SplitPDFUI
                 var url = gitlabserver + "/" + project + "/" + issuespath;
                 var result = client.PostAsync(url, requestContent).Result;
             }
+        }
+
+        private void txtOutputFolder_TextChanged(object sender, EventArgs e)
+        {
+            outputFolderPath = txtOutputFolder.Text;
+            
+        }
+
+        private void label1_Click(object sender, EventArgs e){}
+        private void label1_Click_1(object sender, EventArgs e){}
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+            cmbGit.DataSource = Enum.GetValues(typeof(SplitPDF.gitlabupload));
+        }
+
+        private void cmbGit_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            
+        }
+
+        private void txtProject_TextChanged(object sender, EventArgs e)
+        {
+            project = txtProject.Text;
         }
     }
 }

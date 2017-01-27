@@ -20,8 +20,8 @@ namespace SplitPDF
         public int thumbCol = 15;
         public int textCol = 6;
         SLDocument sl;
-        int iStartRowIndex = 1;
-        int iStartColumnIndex = 2;
+        public int iStartRowIndex = 1;
+        public int iStartColumnIndex = 2;
 
         public void ExportToExcel(string outputfile, string tabname, DataTable dt)
         {
@@ -90,6 +90,7 @@ namespace SplitPDF
                         SLPicture pic = new SLPicture(filepath);
                         pic.SetPosition(i, thumbCol);
                         sl.InsertPicture(pic);
+                        sl = null;
                     }
                     catch (Exception e) { Console.Write("No Thumbnails"); }
                 }

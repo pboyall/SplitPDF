@@ -40,6 +40,11 @@
             this.chkNav = new System.Windows.Forms.CheckBox();
             this.cmdDefault = new System.Windows.Forms.Button();
             this.btnCurlTests = new System.Windows.Forms.Button();
+            this.txtProject = new System.Windows.Forms.TextBox();
+            this.lblProject = new System.Windows.Forms.Label();
+            this.txtOutputFolder = new System.Windows.Forms.TextBox();
+            this.lblOutputFolder = new System.Windows.Forms.Label();
+            this.cmbGit = new System.Windows.Forms.ComboBox();
             this.SuspendLayout();
             // 
             // btnBrowse
@@ -63,7 +68,7 @@
             // 
             // txtPDFFolder
             // 
-            this.txtPDFFolder.Location = new System.Drawing.Point(283, 7);
+            this.txtPDFFolder.Location = new System.Drawing.Point(298, 7);
             this.txtPDFFolder.Name = "txtPDFFolder";
             this.txtPDFFolder.Size = new System.Drawing.Size(636, 20);
             this.txtPDFFolder.TabIndex = 30;
@@ -72,7 +77,7 @@
             // lblFolder
             // 
             this.lblFolder.AutoSize = true;
-            this.lblFolder.Location = new System.Drawing.Point(182, 9);
+            this.lblFolder.Location = new System.Drawing.Point(217, 10);
             this.lblFolder.Name = "lblFolder";
             this.lblFolder.Size = new System.Drawing.Size(60, 13);
             this.lblFolder.TabIndex = 29;
@@ -160,11 +165,62 @@
             this.btnCurlTests.UseVisualStyleBackColor = true;
             this.btnCurlTests.Click += new System.EventHandler(this.btnCurlTests_Click);
             // 
+            // txtProject
+            // 
+            this.txtProject.Location = new System.Drawing.Point(298, 33);
+            this.txtProject.MaxLength = 3;
+            this.txtProject.Name = "txtProject";
+            this.txtProject.Size = new System.Drawing.Size(46, 20);
+            this.txtProject.TabIndex = 40;
+            this.txtProject.TextChanged += new System.EventHandler(this.txtProject_TextChanged);
+            // 
+            // lblProject
+            // 
+            this.lblProject.AutoSize = true;
+            this.lblProject.Location = new System.Drawing.Point(217, 36);
+            this.lblProject.Name = "lblProject";
+            this.lblProject.Size = new System.Drawing.Size(54, 13);
+            this.lblProject.TabIndex = 41;
+            this.lblProject.Text = "Project ID";
+            this.lblProject.Click += new System.EventHandler(this.label1_Click);
+            // 
+            // txtOutputFolder
+            // 
+            this.txtOutputFolder.Location = new System.Drawing.Point(298, 62);
+            this.txtOutputFolder.Name = "txtOutputFolder";
+            this.txtOutputFolder.Size = new System.Drawing.Size(636, 20);
+            this.txtOutputFolder.TabIndex = 43;
+            this.txtOutputFolder.TextChanged += new System.EventHandler(this.txtOutputFolder_TextChanged);
+            // 
+            // lblOutputFolder
+            // 
+            this.lblOutputFolder.AutoSize = true;
+            this.lblOutputFolder.Location = new System.Drawing.Point(217, 65);
+            this.lblOutputFolder.Name = "lblOutputFolder";
+            this.lblOutputFolder.Size = new System.Drawing.Size(71, 13);
+            this.lblOutputFolder.TabIndex = 42;
+            this.lblOutputFolder.Text = "Output Folder";
+            this.lblOutputFolder.Click += new System.EventHandler(this.label1_Click_1);
+            // 
+            // cmbGit
+            // 
+            this.cmbGit.FormattingEnabled = true;
+            this.cmbGit.Location = new System.Drawing.Point(11, 274);
+            this.cmbGit.Name = "cmbGit";
+            this.cmbGit.Size = new System.Drawing.Size(121, 21);
+            this.cmbGit.TabIndex = 44;
+            this.cmbGit.SelectedIndexChanged += new System.EventHandler(this.cmbGit_SelectedIndexChanged);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(946, 307);
+            this.Controls.Add(this.cmbGit);
+            this.Controls.Add(this.txtOutputFolder);
+            this.Controls.Add(this.lblOutputFolder);
+            this.Controls.Add(this.lblProject);
+            this.Controls.Add(this.txtProject);
             this.Controls.Add(this.btnCurlTests);
             this.Controls.Add(this.cmdDefault);
             this.Controls.Add(this.chkNav);
@@ -179,6 +235,7 @@
             this.Controls.Add(this.lblPDFFolder);
             this.Name = "Form1";
             this.Text = "Form1";
+            this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -198,6 +255,11 @@
         private System.Windows.Forms.CheckBox chkNav;
         private System.Windows.Forms.Button cmdDefault;
         private System.Windows.Forms.Button btnCurlTests;
+        private System.Windows.Forms.TextBox txtProject;
+        private System.Windows.Forms.Label lblProject;
+        private System.Windows.Forms.TextBox txtOutputFolder;
+        private System.Windows.Forms.Label lblOutputFolder;
+        private System.Windows.Forms.ComboBox cmbGit;
     }
 }
 

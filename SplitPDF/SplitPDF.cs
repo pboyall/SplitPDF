@@ -462,6 +462,8 @@ namespace SplitPDF
                     if (theSlide.navTable.NavWeight != 0) { navtable.Rows.Add(theSlide.navTable.Source, theSlide.navTable.Target, theSlide.navTable.NavWeight, theSlide.navTable.NavigationType, theSlide.Thumbnail, "", theSlide.navTable.NavDesc, theSlide.navTable.PDFPageNo); }
                     metadatatable.Rows.Add(theSlide.Thumbnail, theSlide.PageNumber, theSlide.PageOrder, theSlide.Source, theSlide.PageReference, theSlide.description, theSlide.ProductMessageCategory, theSlide.ExternalID, theSlide.Comments );
 
+
+
                     SlideCounter++;
                 }
                 return pageCount;
@@ -665,6 +667,25 @@ namespace SplitPDF
 
             }
         }
+
+        public void ExportToGit(string projectid)
+        {
+            Gitlab gitter = new Gitlab();
+            ExcelExport ee = new ExcelExport();
+            gitter.project = projectid;
+            //for each row read Thumbcol value and load data 
+            int iEndRowIndex = ee.iStartRowIndex + this.metatable.Rows.Count + 1 - 1;
+
+            for (int i = ee.iStartRowIndex; i < iEndRowIndex; i++)
+            {
+                string filepath;
+                filepath = this.metatable.Rows[i - 1][ee.thumbCol - 1].ToString();
+                string title = this.metatable.Rows[i - 1][0].ToString(); //4
+                string description = "page " + this.metatable.Rows[i - 1][1].ToString() + " " + this.metatable.Rows[i - 1][0].ToString() + this.metatable.Rows[i - 1][4].ToString(); //5 and 14
+                gitter.raiseIssue(filepath, title, description);
+            }
+        }
+
         public void ExportMetadata()
         {
             if (exportMeta)

@@ -49,7 +49,9 @@ namespace SplitPDF
             //File.Delete(pageFilePath);
             rasterizer.Close();
             img.Save(thumbFilePath, ImageFormat.Png);
+            img.Dispose();
             resizeImage(thumbFilePath);
+
             return thumbFilePath;
         }
 
@@ -59,6 +61,7 @@ namespace SplitPDF
             var image = new ImageMagick.MagickImage(imagefilepath);
             image.Resize(new ImageMagick.MagickGeometry(thumbnailwidth, thumbnailheight));
             image.Write(imagefilepath);
+            image.Dispose();
         }
 
         //For comparing previous set of images with new set, in order to identify changes
