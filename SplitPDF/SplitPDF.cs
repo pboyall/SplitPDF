@@ -682,7 +682,7 @@ namespace SplitPDF
                 filepath = this.metatable.Rows[i - 1][ee.thumbCol - 1].ToString();
                 string title = this.metatable.Rows[i - 1][0].ToString(); //4
                 string description = "page " + this.metatable.Rows[i - 1][1].ToString() + " " + this.metatable.Rows[i - 1][0].ToString() + this.metatable.Rows[i - 1][4].ToString(); //5 and 14
-                gitter.raiseIssue(filepath, title, description);
+                gitter.raiseIssue(filepath.Replace(".png", "-full.png"), title, description);
             }
         }
 

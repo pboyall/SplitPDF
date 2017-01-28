@@ -41,21 +41,21 @@ namespace SplitPDF
         public string GenerateThumbnail(int pagenumber, string thumbFilePath)
         {
             //TODO clean up hard coded name strings
-            string imagefile  = System.IO.Path.Combine(outputfile, System.IO.Path.GetFileNameWithoutExtension(inputfile) + "-p" + pagenumber + ".png");
+            //string imagefile  = System.IO.Path.Combine(outputfile, System.IO.Path.GetFileNameWithoutExtension(inputfile) + "-p" + pagenumber + "-full.png");
             rasterizer.Open(inputfile, vesion, false);
-            string pageFilePath = imagefile;
+            //string pageFilePath = imagefile;
             System.Drawing.Image img = rasterizer.GetPage(this.exportDPI, this.exportDPI, pagenumber);
             //img.Save(pageFilePath, ImageFormat.Png);
             //File.Delete(pageFilePath);
             rasterizer.Close();
             img.Save(thumbFilePath, ImageFormat.Png);
+            img.Save(thumbFilePath.Replace(".png", "-full.png"), ImageFormat.Png);
             img.Dispose();
             resizeImage(thumbFilePath);
-
             return thumbFilePath;
         }
 
-
+        //There is an issue uploading resized images into Gitlab
         private void resizeImage(string imagefilepath)
         {
             var image = new ImageMagick.MagickImage(imagefilepath);
@@ -68,10 +68,6 @@ namespace SplitPDF
         public Boolean compareImages(string PathToImage1, string PathToImage2)
         {
             Boolean retval = false;
-
-
-
-
             return retval;
         }
 

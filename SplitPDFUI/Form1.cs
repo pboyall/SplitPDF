@@ -101,34 +101,40 @@ namespace SplitPDFUI
             splitter.outputfile = outputFolderPath;
             splitter.newProject();
 
-            //For each PDF in source directory, run the routine
-            string[] dirs = Directory.GetFiles(PDFFolderPath, "*.pdf");
-            foreach (string dir in dirs)
-            {
-                splitter.inputfile = dir;
-                //Create Presentation
-                splitter.newPresentation(loopcounter, System.IO.Path.GetFileNameWithoutExtension(dir));
-                loopcounter++;
-                //Execute code
-                int returned = splitter.Split();
-                string excelfile = splitter.outputfile + "\\" + dir + ".xlsx";
-                splitter.ExportToExcel(excelfile, "Meta", "Meta");     //No tabname for now - that would be if updating.  Later Guid.NewGuid().ToString() 
-                //splitter.ExportToExcel(excelfile, "Nav", "Nav");     //No tabname for now - that would be if updating.  Later
-                //Metadata Export
-                splitter.ExportMetadata();
-                if (splitter.exportGit == SplitPDF.gitlabupload.New){
-                    splitter.ExportToGit(project);
+            try { 
+                //For each PDF in source directory, run the routine
+                string[] dirs = Directory.GetFiles(PDFFolderPath, "*.pdf");
+                foreach (string dir in dirs)
+                {
+                    splitter.inputfile = dir;
+                    //Create Presentation
+                    splitter.newPresentation(loopcounter, System.IO.Path.GetFileNameWithoutExtension(dir));
+                    loopcounter++;
+                    //Execute code
+                    int returned = splitter.Split();
+                    string excelfile = splitter.outputfile + "\\" + dir + ".xlsx";
+                    splitter.ExportToExcel(excelfile, "Meta", "Meta");     //No tabname for now - that would be if updating.  Later Guid.NewGuid().ToString() 
+                    //splitter.ExportToExcel(excelfile, "Nav", "Nav");     //No tabname for now - that would be if updating.  Later
+                    //Metadata Export
+                    splitter.ExportMetadata();
+                    if (splitter.exportGit == SplitPDF.gitlabupload.New){
+                        splitter.ExportToGit(project);
+                    }
+
                 }
-
+            }catch(Exception ee)
+            {
+                MessageBox.Show(ee.Message);
             }
-
 
         }
 
         private void cmdDefault_Click(object sender, EventArgs e)
         {
-            txtPDFFolder.Text = "G:\\PDFSplitting\\";
-            txtOutputFolder.Text = "G:\\PDFSplitting\\Output";
+//            txtPDFFolder.Text = "G:\\PDFSplitting\\";
+//            txtOutputFolder.Text = "G:\\PDFSplitting\\Output";
+            txtPDFFolder.Text = "E:\\PDFSplitter\\";
+            txtOutputFolder.Text = "E:\\PDFSplitter\\Output";
             txtProject.Text = "48";
         }
 
