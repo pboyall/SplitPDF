@@ -58,9 +58,9 @@ namespace SplitPDF
                     Dictionary<string, string> postParameters = new Dictionary<string, string>();
                     if (title == "") { title = "Default Title"; }
                     postParameters.Add("title", title);
-                    postParameters.Add("description", System.Net.WebUtility.UrlEncode(description) + "\r\n " + hash);
+                    postParameters.Add("description", description + "\r\n " + hash);
                     HttpPostRequest(gitlabserver + project + "/" + issuespath, postParameters);
-                    /*
+                    /*System.Net.WebUtility.UrlEncode()
                         var requestContent = new FormUrlEncodedContent(new[] {
                         new KeyValuePair<string, string>("title", System.Net.WebUtility.UrlEncode(title)),
                         new KeyValuePair<string, string>("description", System.Net.WebUtility.UrlEncode(description) + "\r\n " + System.Net.WebUtility.UrlEncode(hash))
@@ -70,7 +70,7 @@ namespace SplitPDF
                         var url = gitlabserver + project + "/" + issuespath;
                         var result = client.PostAsync(url, requestContent).Result;
                         */
-                    }
+                }
             }
             catch (Exception e)
                     {

@@ -682,9 +682,20 @@ namespace SplitPDF
                 filepath = this.metatable.Rows[i - 1][ee.thumbCol - 1].ToString();
                 string title = this.metatable.Rows[i - 1][0].ToString(); //4
                 if (title == "") { title = this.metatable.Rows[i - 1][3].ToString(); }
+                if (title == "") { title = this.metatable.Rows[i - 1][17].ToString(); }
+                if (title == "") { title = this.metatable.Rows[i - 1][6].ToString(); }
 
+                //0 Is slide Title
+                //1 is page number
+                //2 is section and page number
+                //12 is Comments
+                //13 Is Comments Owner
+                //14 Is Path to Thumbnail
+                //
+                string pagenumber = this.metatable.Rows[i - 1][1].ToString();
 
-                string description = "page " + this.metatable.Rows[i - 1][1].ToString() + " " + this.metatable.Rows[i - 1][0].ToString() + this.metatable.Rows[i - 1][4].ToString(); //5 and 14
+                string description = "page " + pagenumber + "/label " + pagenumber + "\r\n" + this.metatable.Rows[i - 1][0].ToString() + "\r\n" + this.metatable.Rows[i - 1][4].ToString() + "\r\n" + this.metatable.Rows[i - 1][12].ToString(); //5 and 14
+                description = description.Replace("#", Environment.NewLine + "<br />\r\n  ");
                 gitter.raiseIssue(filepath.Replace(".png", "-full.png"), title, description);
             }
         }
