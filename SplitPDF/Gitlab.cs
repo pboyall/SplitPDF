@@ -11,6 +11,8 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using static System.Net.WebRequestMethods;
+using System.Web;
+
 
 namespace SplitPDF
 {
@@ -33,12 +35,15 @@ namespace SplitPDF
                     var stream = System.IO.File.Open(filepath, FileMode.Open, FileAccess.Read);
                     HttpContent content = new StreamContent(stream);
                     form.Add(content, "file");
-                    content.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+                content.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
                     {
                         Name = "file",
                         FileName = stream.Name
-                    };
-                    form.Headers.Add("PRIVATE-TOKEN", token);
+                };
+                //@"g:\Code\screens\SPA_HUM_AxialSPA_UK_EN_AbbVie care experience_LO.png"
+                //System.Net.WebUtility.UrlEncode()
+                //@"G:\PDFSplitting\output\Thumb16383 HUMIRA axSpA CLM DA JAN 2017 Update_CONSIDERATION Qs_REFERENCEONLY-p2.png"
+                form.Headers.Add("PRIVATE-TOKEN", token);
                     // Get the response.
                     HttpResponseMessage response = await client.PostAsync(gitlabserver + "/" + project + "/" + uploadpath, form);
                     HttpContent responseContent = response.Content;
