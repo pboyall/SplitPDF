@@ -681,11 +681,13 @@ namespace SplitPDF
                 string filepath;
                 filepath = this.metatable.Rows[i - 1][ee.thumbCol - 1].ToString();
                 string title = this.metatable.Rows[i - 1][0].ToString(); //4
-                if (title == "") { title = this.metatable.Rows[i - 1][3].ToString(); }
-
-
                 string description = "page " + this.metatable.Rows[i - 1][1].ToString() + " " + this.metatable.Rows[i - 1][0].ToString() + this.metatable.Rows[i - 1][4].ToString(); //5 and 14
+<<<<<<< HEAD
+                filepath = @"G:\PDFSplitting\output\arse.png";
+                gitter.raiseIssue(filepath, title, description);
+=======
                 gitter.raiseIssue(filepath.Replace(".png", "-full.png"), title, description);
+>>>>>>> c3b94f282d5697bdccb343b9fb71492791fa7c05
             }
         }
 

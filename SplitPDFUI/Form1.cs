@@ -127,14 +127,17 @@ namespace SplitPDFUI
                 MessageBox.Show(ee.Message);
             }
 
+
+            MessageBox.Show("Complete");
+
         }
 
         private void cmdDefault_Click(object sender, EventArgs e)
         {
-//            txtPDFFolder.Text = "G:\\PDFSplitting\\";
-//            txtOutputFolder.Text = "G:\\PDFSplitting\\Output";
-            txtPDFFolder.Text = "E:\\PDFSplitter\\";
-            txtOutputFolder.Text = "E:\\PDFSplitter\\Output";
+            txtPDFFolder.Text = "G:\\PDFSplitting\\";
+            txtOutputFolder.Text = "G:\\PDFSplitting\\Output";
+//            txtPDFFolder.Text = "E:\\PDFSplitter\\";
+//            txtOutputFolder.Text = "E:\\PDFSplitter\\Output";
             txtProject.Text = "48";
         }
 
