@@ -26,7 +26,7 @@ namespace SplitPDFUI
         private string mydirectory = "";
         private string project = "";
 
-//Gitlab Settings
+        //Gitlab Settings
         private string gitlabserver = "http://gitlab.internal.28b.co.uk/api/v3/projects/";
         private string issuespath = "issues";
         private string uploadpath = "uploads";
@@ -64,7 +64,7 @@ namespace SplitPDFUI
             splitter.comparisonfile = comparisonfile;
 
             splitter.newProject();
-            
+
             try
             {
                 systemvalues = System.IO.File.ReadAllLines(PDFFolderPath + "\\Project.txt");
@@ -83,8 +83,8 @@ namespace SplitPDFUI
             {
 
             }
-            
-//Magic
+
+            //Magic
             splitter.renderer.exportDPI = 150;
             splitter.renderer.thumbnailheight = 150;
             splitter.renderer.thumbnailwidth = 200;
@@ -97,11 +97,12 @@ namespace SplitPDFUI
             SplitPDF.gitlabupload exportGitStatus;
             Enum.TryParse<SplitPDF.gitlabupload>(cmbGit.SelectedValue.ToString(), out exportGitStatus);
             splitter.exportGit = exportGitStatus;
-            
+
             splitter.outputfile = outputFolderPath;
             splitter.newProject();
 
-            try { 
+            try
+            {
                 //For each PDF in source directory, run the routine
                 string[] dirs = Directory.GetFiles(PDFFolderPath, "*.pdf");
                 foreach (string dir in dirs)
@@ -112,23 +113,28 @@ namespace SplitPDFUI
                     loopcounter++;
                     //Execute code
                     int returned = splitter.Split();
-                    string excelfile = splitter.outputfile + "\\" + dir + ".xlsx";
+                    //string excelfile = splitter.outputfile + "\\" + dir + ".xlsx";
+                    string excelfile = splitter.outputfile + "\\" + System.IO.Path.GetFileNameWithoutExtension(dir) + ".xlsx";
                     splitter.ExportToExcel(excelfile, "Meta", "Meta");     //No tabname for now - that would be if updating.  Later Guid.NewGuid().ToString() 
                     //splitter.ExportToExcel(excelfile, "Nav", "Nav");     //No tabname for now - that would be if updating.  Later
                     //Metadata Export
                     splitter.ExportMetadata();
-                    if (splitter.exportGit == SplitPDF.gitlabupload.New){
+                    if (splitter.exportGit == SplitPDF.gitlabupload.New)
+                    {
                         splitter.ExportToGit(project);
                     }
 
                 }
-            }catch(Exception ee)
+            }
+            catch (Exception ee)
             {
                 MessageBox.Show(ee.Message);
             }
 
 
-            MessageBox.Show("Complete");
+            // MessageBox.Show("Complete");
+
+
 
         }
 
@@ -136,8 +142,9 @@ namespace SplitPDFUI
         {
             txtPDFFolder.Text = "G:\\PDFSplitting\\";
             txtOutputFolder.Text = "G:\\PDFSplitting\\Output";
-//            txtPDFFolder.Text = "E:\\PDFSplitter\\";
-//            txtOutputFolder.Text = "E:\\PDFSplitter\\Output";
+            txtExcelSource.Text = "G:\\PDFSplitting\\BookmarkList.xlsx";
+            //            txtPDFFolder.Text = "E:\\PDFSplitter\\";
+            //            txtOutputFolder.Text = "E:\\PDFSplitter\\Output";
             txtProject.Text = "48";
         }
 
@@ -197,11 +204,11 @@ namespace SplitPDFUI
         private void txtOutputFolder_TextChanged(object sender, EventArgs e)
         {
             outputFolderPath = txtOutputFolder.Text;
-            
+
         }
 
-        private void label1_Click(object sender, EventArgs e){}
-        private void label1_Click_1(object sender, EventArgs e){}
+        private void label1_Click(object sender, EventArgs e) { }
+        private void label1_Click_1(object sender, EventArgs e) { }
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -211,12 +218,33 @@ namespace SplitPDFUI
 
         private void cmbGit_SelectedIndexChanged(object sender, EventArgs e)
         {
-            
+
         }
 
         private void txtProject_TextChanged(object sender, EventArgs e)
         {
             project = txtProject.Text;
+        }
+
+        private void btnBookmark_Click(object sender, EventArgs e)
+        {
+            SplitPDF.ReadExcel ExcelRead = new SplitPDF.ReadExcel();
+            SplitPDF.splitPDF bookmarker = new SplitPDF.splitPDF();
+
+            string[] dirs = Directory.GetFiles(PDFFolderPath, "*.pdf");
+            foreach (string dir in dirs)
+            {
+                string filename = dir;
+                string excelfilename = System.IO.Path.GetFileNameWithoutExtension(dir) + ".xlsx";
+                //hard coded source for now, later replace with matched pairings (convention)
+                Dictionary<int, string> Bookmarklist = ExcelRead.Read(txtExcelSource.Text);
+                //Now bookmark up PDF
+                bookmarker.BookmarkPDF(Bookmarklist, filename);
+                //Create Presentation
+                //System.IO.Path.GetFileNameWithoutExtension(dir);
+            }
+
+
         }
     }
 }

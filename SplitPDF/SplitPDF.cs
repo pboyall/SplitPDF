@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -15,6 +16,7 @@ using ImageMagick;
 using System.Web;
 using System.Xml;
 using System.Reflection;
+
 
 namespace SplitPDF
 {
@@ -710,6 +712,61 @@ namespace SplitPDF
                 }catch(Exception e)
                 {
                     ///Issue with Spreadsheet Light and OPenxML
+                }
+            }
+        }
+
+        public void BookmarkPDF(Dictionary<int, string> Bookmarks, string filename)
+        {
+            string fileonly = System.IO.Path.GetFileNameWithoutExtension(filename);
+            string pathonly = System.IO.Path.GetDirectoryName(filename);
+
+
+            string newfile = pathonly + "\\" + fileonly + "Bookmarked" + ".pdf";
+
+            PdfReader pdfReader = new PdfReader(filename);
+            Rectangle size = pdfReader.GetPageSizeWithRotation(1);
+            Document doc = new Document();
+            using (pdfReader) { 
+                try
+                {
+                    PdfWriter writer = PdfWriter.GetInstance(doc, new FileStream(newfile, FileMode.Create, FileAccess.Write));
+                    doc.Open();
+                    //Copy from old tonew
+                    for (var i = 1; i <= pdfReader.NumberOfPages; i++)
+                    {
+                        doc.NewPage();
+                        var importedPage = writer.GetImportedPage(pdfReader, i);
+                        PdfContentByte cb = writer.DirectContent;
+                        cb.AddTemplate(importedPage, 0, 0);
+
+                        List<Dictionary<String, Object>> outlines = new List<Dictionary<String, Object>>();
+                        Dictionary<String, Object> helloworld = new Dictionary<String, Object>();
+                        helloworld.Add("Title", "Hello World");
+                        helloworld.Add("Action", "GoTo");
+                        helloworld.Add("Page", String.Format("{0} Fit", 1));
+                        outlines.Add(helloworld);
+
+                        int pagenumber = 1;
+
+                        Chapter chapter1 = new Chapter(new Paragraph("This is Chapter 1"), pagenumber);
+                        chapter1.BookmarkTitle = "Key Message 1";
+                        chapter1.BookmarkOpen = false;
+                        doc.Add(chapter1);
+                    }
+                }
+                catch (DocumentException dex)
+                {
+                    Console.Write(dex.Message);
+                }
+                catch (IOException ioex)
+                {
+                    Console.Write(ioex.Message);
+                }
+
+                finally
+                {
+                    doc.Close();
                 }
             }
         }

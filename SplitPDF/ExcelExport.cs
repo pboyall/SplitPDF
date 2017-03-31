@@ -90,12 +90,12 @@ namespace SplitPDF
                         SLPicture pic = new SLPicture(filepath);
                         pic.SetPosition(i, thumbCol);
                         sl.InsertPicture(pic);
-                        sl = null;
+                        pic = null;
                     }
                     catch (Exception e) { Console.Write("No Thumbnails"); }
                 }
             }
-            sl.SaveAs(outputfile);
+            sl.SaveAs(outputfile.Replace(".pdf", ""));
             sl.Dispose();
         }
 

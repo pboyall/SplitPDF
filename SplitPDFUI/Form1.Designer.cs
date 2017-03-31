@@ -45,6 +45,9 @@
             this.txtOutputFolder = new System.Windows.Forms.TextBox();
             this.lblOutputFolder = new System.Windows.Forms.Label();
             this.cmbGit = new System.Windows.Forms.ComboBox();
+            this.txtExcelSource = new System.Windows.Forms.TextBox();
+            this.Excel = new System.Windows.Forms.Label();
+            this.btnBookmark = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // btnBrowse
@@ -211,11 +214,40 @@
             this.cmbGit.TabIndex = 44;
             this.cmbGit.SelectedIndexChanged += new System.EventHandler(this.cmbGit_SelectedIndexChanged);
             // 
+            // txtExcelSource
+            // 
+            this.txtExcelSource.Location = new System.Drawing.Point(298, 88);
+            this.txtExcelSource.Name = "txtExcelSource";
+            this.txtExcelSource.Size = new System.Drawing.Size(636, 20);
+            this.txtExcelSource.TabIndex = 46;
+            // 
+            // Excel
+            // 
+            this.Excel.AutoSize = true;
+            this.Excel.Location = new System.Drawing.Point(217, 91);
+            this.Excel.Name = "Excel";
+            this.Excel.Size = new System.Drawing.Size(33, 13);
+            this.Excel.TabIndex = 45;
+            this.Excel.Text = "Excel";
+            // 
+            // btnBookmark
+            // 
+            this.btnBookmark.Location = new System.Drawing.Point(15, 114);
+            this.btnBookmark.Name = "btnBookmark";
+            this.btnBookmark.Size = new System.Drawing.Size(89, 23);
+            this.btnBookmark.TabIndex = 47;
+            this.btnBookmark.Text = "Bookmark PDF";
+            this.btnBookmark.UseVisualStyleBackColor = true;
+            this.btnBookmark.Click += new System.EventHandler(this.btnBookmark_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(946, 307);
+            this.Controls.Add(this.btnBookmark);
+            this.Controls.Add(this.txtExcelSource);
+            this.Controls.Add(this.Excel);
             this.Controls.Add(this.cmbGit);
             this.Controls.Add(this.txtOutputFolder);
             this.Controls.Add(this.lblOutputFolder);
@@ -260,6 +292,9 @@
         private System.Windows.Forms.TextBox txtOutputFolder;
         private System.Windows.Forms.Label lblOutputFolder;
         private System.Windows.Forms.ComboBox cmbGit;
+        private System.Windows.Forms.TextBox txtExcelSource;
+        private System.Windows.Forms.Label Excel;
+        private System.Windows.Forms.Button btnBookmark;
     }
 }
 
