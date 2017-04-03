@@ -725,35 +725,40 @@ namespace SplitPDF
             string newfile = pathonly + "\\" + fileonly + "Bookmarked" + ".pdf";
 
             PdfReader pdfReader = new PdfReader(filename);
-            Rectangle size = pdfReader.GetPageSizeWithRotation(1);
+            Rectangle size = pdfReader.GetPageSize(1);
             Document doc = new Document();
-            using (pdfReader) { 
+            using (pdfReader) {
                 try
                 {
+                    //Copy old page from PDF
                     PdfWriter writer = PdfWriter.GetInstance(doc, new FileStream(newfile, FileMode.Create, FileAccess.Write));
                     doc.Open();
-                    //Copy from old tonew
                     for (var i = 1; i <= pdfReader.NumberOfPages; i++)
                     {
+                        //Copy this page from old to new
                         doc.NewPage();
                         var importedPage = writer.GetImportedPage(pdfReader, i);
                         PdfContentByte cb = writer.DirectContent;
                         cb.AddTemplate(importedPage, 0, 0);
 
-                        List<Dictionary<String, Object>> outlines = new List<Dictionary<String, Object>>();
-                        Dictionary<String, Object> helloworld = new Dictionary<String, Object>();
-                        helloworld.Add("Title", "Hello World");
-                        helloworld.Add("Action", "GoTo");
-                        helloworld.Add("Page", String.Format("{0} Fit", 1));
-                        outlines.Add(helloworld);
-
-                        int pagenumber = 1;
-
-                        Chapter chapter1 = new Chapter(new Paragraph("This is Chapter 1"), pagenumber);
-                        chapter1.BookmarkTitle = "Key Message 1";
-                        chapter1.BookmarkOpen = false;
-                        doc.Add(chapter1);
+                        /*                      Old way of doing the bookmarks
+                        */
                     }
+                    //Now iterate the bookmarks dictionary and inject
+                    List<Dictionary<String, Object>> outlines = new List<Dictionary<String, Object>>();
+                    foreach (var Bookmark in Bookmarks) {
+                        if (Bookmark.Key < pdfReader.NumberOfPages + 1)
+                        {
+                            Dictionary<String, Object> helloworld = new Dictionary<String, Object>();
+                            helloworld.Add("Title", Bookmark.Value);
+                            helloworld.Add("Action", "GoTo");
+                            helloworld.Add("Page", String.Format("{0} Fit", Bookmark.Key));
+                            outlines.Add(helloworld);
+                        }
+                    }
+
+                    writer.Outlines = outlines;
+
                 }
                 catch (DocumentException dex)
                 {
