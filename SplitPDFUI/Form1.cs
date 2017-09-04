@@ -145,7 +145,7 @@ namespace SplitPDFUI
             txtExcelSource.Text = "G:\\PDFSplitting\\BookmarkList.xlsx";
             //            txtPDFFolder.Text = "E:\\PDFSplitter\\";
             //            txtOutputFolder.Text = "E:\\PDFSplitter\\Output";
-            txtProject.Text = "48";
+            txtProject.Text = "90";
         }
 
         private void txtPDFFolder_TextChanged(object sender, EventArgs e)

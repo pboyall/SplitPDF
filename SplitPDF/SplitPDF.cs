@@ -733,13 +733,28 @@ namespace SplitPDF
                     //Copy old page from PDF
                     PdfWriter writer = PdfWriter.GetInstance(doc, new FileStream(newfile, FileMode.Create, FileAccess.Write));
                     doc.Open();
+                    PdfContentByte cb = writer.DirectContent;
                     for (var i = 1; i <= pdfReader.NumberOfPages; i++)
                     {
                         //Copy this page from old to new
-                        doc.NewPage();
+                        var pageSize = pdfReader.GetPageSizeWithRotation(i);
                         var importedPage = writer.GetImportedPage(pdfReader, i);
-                        PdfContentByte cb = writer.DirectContent;
-                        cb.AddTemplate(importedPage, 0, 0);
+                        int rotation = pageSize.Rotation;
+                        iTextSharp.text.Rectangle newPageSize = null;
+
+                        
+
+                        newPageSize = new iTextSharp.text.Rectangle(pageSize);
+                        doc.SetPageSize(newPageSize);
+                        doc.NewPage();
+                       
+                        //PdfContentByte cb = writer.DirectContent;
+                        //cb.AddTemplate(importedPage, 0, 0);
+
+                        
+                        
+
+                        cb.AddTemplate(importedPage, 1f, 0, 0 , 1f, 0, 0);
 
                         /*                      Old way of doing the bookmarks
                         */
